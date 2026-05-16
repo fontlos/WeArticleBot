@@ -4,7 +4,12 @@ use crate::error::Result;
 use crate::session::Session;
 
 impl Session {
-    pub async fn send_text_message(&self, receive_id: &str, receive_id_type: &str, text: &str) -> Result<()> {
+    pub async fn send_text_message(
+        &self,
+        receive_id: &str,
+        receive_id_type: &str,
+        text: &str,
+    ) -> Result<()> {
         self.refresh_access_token().await?;
         let url = "https://open.feishu.cn/open-apis/im/v1/messages";
         let query = [("receive_id_type", receive_id_type)];

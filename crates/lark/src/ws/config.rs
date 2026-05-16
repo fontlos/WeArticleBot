@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 
 #[derive(Debug, Deserialize)]
 struct WsRes {

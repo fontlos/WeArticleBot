@@ -1,11 +1,27 @@
 use bytes::Bytes;
-use lark::data::EventEnvelope;
 use lark::WebSocketClient;
+use lark::data::EventEnvelope;
 
 use std::env;
 
+fn init_log() {
+    use logforth::append;
+    use logforth::layout::TextLayout;
+    use logforth::record::Level;
+    use logforth::record::LevelFilter;
+
+    logforth::starter_log::builder()
+        .dispatch(|d| {
+            d.filter(LevelFilter::MoreSevereEqual(Level::Debug))
+                .append(append::Stdout::default().with_layout(TextLayout::default()))
+        })
+        .apply();
+}
+
 #[tokio::main]
 async fn main() {
+    init_log();
+
     dotenvy::dotenv().ok();
     let app_id = env::var("APP_ID").unwrap();
     let app_secret = env::var("APP_SECRET").unwrap();
@@ -34,7 +50,10 @@ async fn handle_event(event: Bytes) {
         }
     };
 
-    println!("收到事件: {} (event_id: {})", envelope.header.event_type, envelope.header.event_id);
+    println!(
+        "收到事件: {} (event_id: {})",
+        envelope.header.event_type, envelope.header.event_id
+    );
 
     // 根据 event_type 分发
     match envelope.header.event_type.as_str() {

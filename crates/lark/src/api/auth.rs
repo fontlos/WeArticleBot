@@ -25,12 +25,7 @@ impl Session {
             "app_id": self.app_id,
             "app_secret": self.app_secret
         });
-        let res = self
-            .client
-            .post(url)
-            .json(&json)
-            .send()
-            .await?;
+        let res = self.client.post(url).json(&json).send().await?;
         let bytes = res.bytes().await?;
         let res = serde_json::from_slice::<AccessToken>(&bytes)?;
         if res.code != 0 {

@@ -14,3 +14,4 @@ serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 dotenvy = "0.15.7"
+logforth = { version = "0.29", features = ["starter-log"] }

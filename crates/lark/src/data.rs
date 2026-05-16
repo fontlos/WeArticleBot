@@ -33,7 +33,7 @@ pub struct MessageEvent {
 pub struct MessageContent {
     pub chat_id: String,
     pub chat_type: String,
-    pub content: String,  // 这是 JSON 字符串，需要二次解析
+    pub content: String, // 这是 JSON 字符串，需要二次解析
     pub message_id: String,
     pub message_type: String,
     pub create_time: String,
@@ -70,4 +70,3 @@ pub struct SenderId {
     pub union_id: String,
     pub user_id: Option<String>,
 }
-
