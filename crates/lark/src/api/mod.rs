@@ -1,4 +1,5 @@
 mod auth;
+mod image;
 
 use crate::error::Result;
 use crate::session::Session;
