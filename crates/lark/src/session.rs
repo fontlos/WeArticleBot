@@ -3,6 +3,7 @@ use reqwest::Client;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[derive(Debug)]
 pub struct Session {
     pub client: Client,
     pub app_id: String,

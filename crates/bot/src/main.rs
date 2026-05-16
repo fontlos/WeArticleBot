@@ -1,8 +1,19 @@
-use bytes::Bytes;
+mod event;
+
 use lark::WebSocketClient;
-use lark::data::EventEnvelope;
 
 use std::env;
+use std::sync::OnceLock;
+
+static LARK: OnceLock<lark::Session> = OnceLock::new();
+pub fn lark() -> &'static lark::Session {
+    LARK.get().unwrap()
+}
+
+static WECHAT: OnceLock<wechat::Session> = OnceLock::new();
+pub fn wechat() -> &'static wechat::Session {
+    WECHAT.get().unwrap()
+}
 
 fn init_log() {
     use logforth::append;
@@ -20,60 +31,36 @@ fn init_log() {
 
 #[tokio::main]
 async fn main() {
+    // 初始化日志
     init_log();
 
+    // 加载环境变量
     dotenvy::dotenv().ok();
     let app_id = env::var("APP_ID").unwrap();
     let app_secret = env::var("APP_SECRET").unwrap();
 
+    let cookie = std::fs::File::open("cookie.json").unwrap();
+    let buffer = std::io::BufReader::new(cookie);
+
+    // 初始化 Lark Session, 供事件处理函数使用
+    LARK.set(lark::Session::new(&app_id, &app_secret)).unwrap();
+
+    // 初始化 WeChat Session, 供事件处理函数使用
+    WECHAT.set(wechat::Session::load(buffer).unwrap()).unwrap();
+
+    // 连接 WebSocket, 接收事件
     let mut websocket = WebSocketClient::connect(&app_id, &app_secret)
         .await
         .expect("Failed to initialize Lark bot");
 
+    // 接收事件并处理
     while let Some(event) = websocket.recv().await {
         tokio::spawn(async move {
-            handle_event(event).await;
+            event::handle(event).await;
         });
     }
-}
 
-async fn handle_event(event: Bytes) {
-    let app_id = env::var("APP_ID").unwrap();
-    let app_secret = env::var("APP_SECRET").unwrap();
-
-    let session = lark::Session::new(&app_id, &app_secret);
-    let envelope: EventEnvelope = match serde_json::from_slice(&event) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("解析事件信封失败: {}", e);
-            return;
-        }
-    };
-
-    println!(
-        "收到事件: {} (event_id: {})",
-        envelope.header.event_type, envelope.header.event_id
-    );
-
-    // 根据 event_type 分发
-    match envelope.header.event_type.as_str() {
-        "im.message.receive_v1" => {
-            let chat_id = envelope.event["message"]["chat_id"].as_str().unwrap_or("");
-            let content_str = envelope.event["message"]["content"].as_str().unwrap_or("");
-
-            // 解析 content 获取文本
-            let content: serde_json::Value = serde_json::from_str(content_str).unwrap();
-            let text = content["text"].as_str().unwrap_or("");
-
-            // 去掉 @ 标记
-            let clean_text = text.replace("@_user_1", "").trim().to_string();
-
-            // 调用
-            session.reply_to_chat(chat_id, &clean_text).await.unwrap();
-        }
-        // 其他事件类型...
-        _ => {
-            println!("未处理的事件类型: {}", envelope.header.event_type);
-        }
-    }
+    // let cookie = std::fs::File::open("cookie.json").unwrap();
+    // let mut buffer = std::io::BufWriter::new(cookie);
+    // wechat().save(&mut buffer).unwrap();
 }
