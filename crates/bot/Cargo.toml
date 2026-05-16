@@ -1,0 +1,16 @@
+[package]
+name = "bot"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+lark = { workspace = true }
+wechat = { workspace = true }
+
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+dotenvy = "0.15.7"

@@ -1,0 +1,18 @@
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    // 库内部错误
+    #[error("Cookie store error: {0}")]
+    CookieStore(#[from] cookie_store::Error),
+    #[error("Invalid header value: {0}")]
+    Headers(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    // 自定义错误
+    #[error("Custom error: {0}")]
+    Custom(String),
+}
