@@ -9,16 +9,16 @@ impl Session {
         &self,
         receive_id: &str,
         receive_id_type: &str,
-        text: &str,
+        msg_type: &str,
+        content: &str,
     ) -> Result<()> {
         self.refresh_access_token().await?;
         let url = "https://open.feishu.cn/open-apis/im/v1/messages";
         let query = [("receive_id_type", receive_id_type)];
-        let content = serde_json::json!({ "text": text }).to_string();
         let json = serde_json::json!({
             "receive_id": receive_id,
             "content": content,
-            "msg_type": "text"
+            "msg_type": msg_type
         });
 
         let res = self
@@ -36,10 +36,12 @@ impl Session {
     }
 
     pub async fn reply_to_chat(&self, chat_id: &str, text: &str) -> Result<()> {
-        self.send_text_message(chat_id, "chat_id", text).await
+        let content = serde_json::json!({ "text": text }).to_string();
+        self.send_text_message(chat_id, "chat_id", "text", &content).await
     }
 
     pub async fn reply_to_user(&self, open_id: &str, text: &str) -> Result<()> {
-        self.send_text_message(open_id, "open_id", text).await
+        let content = serde_json::json!({ "text": text }).to_string();
+        self.send_text_message(open_id, "open_id", "text", &content).await
     }
 }

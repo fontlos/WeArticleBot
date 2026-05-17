@@ -12,10 +12,11 @@
 
 **权限管理**, 需要:
 
-- im:message: 获取与发送单聊、群组消息
-- im:message.group_at_msg:readonly: 获取群组中用户@机器人消息
-- im:message.p2p_msg:readonly: 读取用户发给机器人的单聊消息
-- im:message:send_as_bot: 以应用的身份发消息
+- `im:message`: 获取与发送单聊、群组消息
+- `im:message.group_at_msg:readonly`: 获取群组中用户@机器人消息
+- `im:message.p2p_msg:readonly`: 读取用户发给机器人的单聊消息
+- `im:message:send_as_bot`: 以应用的身份发消息
+- `im:resource`: 图片上传权限
 
 **事件与回调 - 事件配置**
 

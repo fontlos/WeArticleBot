@@ -39,7 +39,7 @@ async fn main() {
     let app_id = env::var("APP_ID").unwrap();
     let app_secret = env::var("APP_SECRET").unwrap();
 
-    let cookie = std::fs::File::open("cookie.json").unwrap();
+    let cookie = std::fs::File::open("cookies.json").unwrap();
     let buffer = std::io::BufReader::new(cookie);
 
     // 初始化 Lark Session, 供事件处理函数使用

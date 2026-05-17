@@ -27,4 +27,9 @@ impl Session {
         let image_key = json["data"]["image_key"].as_str().unwrap_or("");
         Ok(image_key.to_string())
     }
+
+    pub async fn send_img(&self, chat_id: &str, image_key: &str) -> Result<()> {
+        let content = serde_json::json!({ "image_key": image_key }).to_string();
+        self.send_text_message(chat_id, "chat_id", "image", &content).await
+    }
 }
