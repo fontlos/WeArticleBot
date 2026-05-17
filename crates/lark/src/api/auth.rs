@@ -1,8 +1,10 @@
+use bytes::Bytes;
+use reqwest::RequestBuilder;
+use serde::Deserialize;
+
 use crate::error::{Error, Result};
 use crate::session::Session;
 use crate::utils;
-
-use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct AccessToken {
@@ -15,7 +17,8 @@ struct AccessToken {
 }
 
 impl Session {
-    pub async fn refresh_access_token(&self) -> Result<()> {
+    /// 刷新 access token
+    async fn refresh_access_token(&self) -> Result<()> {
         let now = utils::timestamp()?;
         if now < self.expire() {
             return Ok(());
@@ -42,5 +45,17 @@ impl Session {
             _ => return Err(Error::Custom("Invalid access token response".into())),
         }
         Ok(())
+    }
+
+    /// 统一处理请求, 自动刷新 token
+    pub async fn request(&self, req: RequestBuilder) -> Result<Bytes> {
+        self.refresh_access_token().await?;
+        let bytes = req
+            .bearer_auth(self.token.load().as_str())
+            .send()
+            .await?
+            .bytes()
+            .await?;
+        Ok(bytes)
     }
 }
