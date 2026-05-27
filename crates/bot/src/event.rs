@@ -1,5 +1,7 @@
 use bytes::Bytes;
+use lark::api::Message;
 use lark::event::{EventEnvelope, EventType};
+use lark::event::message::MessageEvent;
 
 pub async fn handle(event: Bytes) {
     println!("Received event: {}", String::from_utf8_lossy(&event));
@@ -13,25 +15,34 @@ pub async fn handle(event: Bytes) {
 
     println!(
         "收到事件: {:?}: {}",
-        envelope.event_type(), envelope.event_id()
+        envelope.event_type(),
+        envelope.event_id()
     );
 
     // 根据 event_type 分发
     match envelope.event_type() {
         EventType::ImMessageReceive => {
-            let chat_id = envelope.event["message"]["chat_id"].as_str().unwrap_or("");
-            let content_str = envelope.event["message"]["content"].as_str().unwrap_or("");
+            let msg_event = match envelope.parse_event::<MessageEvent>() {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("解析消息事件失败: {}", e);
+                    return;
+                }
+            };
+
+            let chat_id = msg_event.message.chat_id;
+            let content_str = msg_event.message.content;
 
             // 解析 content 获取文本
-            let content: serde_json::Value = serde_json::from_str(content_str).unwrap();
+            let content: serde_json::Value = serde_json::from_str(&content_str).unwrap();
             let text = content["text"].as_str().unwrap_or("");
 
             // 去掉 @ 标记
             let clean_text = text.replace("@_user_1", "").trim().to_string();
             let (cmd, _args) = parse_command(&clean_text);
             match cmd {
-                "help" => send_help(chat_id).await,
-                "login" => send_login_qrcode(chat_id).await,
+                "help" => send_help(&chat_id).await,
+                "login" => send_login_qrcode(&chat_id).await,
                 _ => {}
             }
         }
@@ -63,19 +74,23 @@ async fn send_help(chat_id: &str) {
     let help_text = "命令提示
 - help: 显示帮助信息
 - login: 获取微信登录二维码";
-    session.send_text_to_chat(chat_id, help_text).await.unwrap();
+
+    let msg = Message::to_chat(chat_id).text(help_text);
+    session.send_message(msg).await.unwrap();
 }
 
 async fn send_login_qrcode(chat_id: &str) {
     let lark = crate::lark();
     let wechat = crate::wechat();
 
-    lark.send_text_to_chat(chat_id, "正在获取登陆二维码")
-        .await
-        .unwrap();
+    let msg = Message::to_chat(chat_id).text("正在获取微信登录二维码...");
+    lark.send_message(msg).await.unwrap();
 
     wechat.create_session().await.unwrap();
     let qrcode_bytes = wechat.get_qrcode().await.unwrap();
+
     let image_key = lark.upload_image(&qrcode_bytes).await.unwrap();
-    lark.send_image_to_chat(chat_id, &image_key).await.unwrap();
+
+    let img = Message::to_chat(chat_id).image(&image_key);
+    lark.send_message(img).await.unwrap();
 }

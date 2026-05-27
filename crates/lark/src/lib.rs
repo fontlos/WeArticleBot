@@ -1,4 +1,4 @@
-mod api;
+pub mod api;
 pub mod error;
 pub mod event;
 mod session;
