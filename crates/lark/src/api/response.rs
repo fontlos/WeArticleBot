@@ -9,6 +9,7 @@ pub struct Response {
 }
 
 impl Response {
+    /// 检查响应
     pub fn check(bytes: &[u8]) -> Result<()> {
         let res: Response = serde_json::from_slice(bytes)?;
         if res.code != 0 {
@@ -19,6 +20,8 @@ impl Response {
         }
         Ok(())
     }
+
+    /// 解析响应
     pub fn parse<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> Result<T> {
         Self::check(bytes)?;
         #[derive(Deserialize)]

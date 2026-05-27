@@ -1,27 +1,5 @@
 use serde::Deserialize;
 
-// =====================
-// 飞书 API 解析
-// =====================
-
-// 统一推送头部
-#[derive(Debug, Deserialize)]
-pub struct EventEnvelope {
-    pub schema: String,
-    pub header: EventHeader,
-    pub event: serde_json::Value,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct EventHeader {
-    pub event_id: String,
-    pub event_type: String,
-    pub create_time: String,
-    pub tenant_key: String,
-    pub app_id: String,
-    pub token: String,
-}
-
 // 事件: 收到消息
 #[derive(Debug, Deserialize)]
 pub struct MessageEvent {

@@ -1,6 +1,6 @@
 mod api;
-pub mod data;
 pub mod error;
+pub mod event;
 mod session;
 mod utils;
 mod ws;

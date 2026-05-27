@@ -1,0 +1,96 @@
+pub mod message;
+
+use serde::Deserialize;
+
+use crate::error::Result;
+
+// =====================
+// 飞书 WS 回调解析
+// =====================
+
+// WebSocket 事件信封
+#[derive(Debug, Deserialize)]
+pub struct EventEnvelope {
+    // 这基本就是版本号, '2.0', 没什么用
+    schema: String,
+    header: EventHeader,
+    pub event: serde_json::Value,
+}
+
+/// 事件头
+#[derive(Debug, Deserialize)]
+struct EventHeader {
+    /// 事件 ID, 每个事件唯一, 可以用来去重
+    event_id: String,
+    event_type: String,
+    create_time: String,
+    tenant_key: String,
+    app_id: String,
+    // 似乎是空字段
+    token: String,
+}
+
+// 不用于解析, 只用于匹配
+/// 事件类型
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EventType {
+    ImMessageReceive,
+    Unsupported,
+}
+
+impl EventEnvelope {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let envelope: EventEnvelope = serde_json::from_slice(bytes)?;
+        Ok(envelope)
+    }
+
+    /// 版本号, 似乎总是'2.0', 没什么用
+    #[inline]
+    pub fn schema(&self) -> &str {
+        &self.schema
+    }
+
+    /// 事件 ID, 每个事件唯一, 可以用来去重
+    #[inline]
+    pub fn event_id(&self) -> &str {
+        &self.header.event_id
+    }
+
+    /// 原始事件类型
+    #[inline]
+    pub fn event_type_raw(&self) -> &str {
+        &self.header.event_type
+    }
+
+    /// 事件类型
+    pub fn event_type(&self) -> EventType {
+        match self.event_type_raw() {
+            "im.message.receive_v1" => EventType::ImMessageReceive,
+            _ => EventType::Unsupported,
+        }
+    }
+
+    /// 事件时间戳, 毫秒字符串
+    #[inline]
+    pub fn timestamp(&self) -> &str {
+        &self.header.create_time
+    }
+
+    /// 租户 ID, 可以用来区分不同的企业
+    #[inline]
+    pub fn tenant_key(&self) -> &str {
+        &self.header.tenant_key
+    }
+
+    /// 不知道有什么用
+    #[inline]
+    pub fn app_id(&self) -> &str {
+        &self.header.app_id
+    }
+
+    /// 似乎总是空的
+    #[inline]
+    pub fn token(&self) -> &str {
+        &self.header.token
+    }
+}
