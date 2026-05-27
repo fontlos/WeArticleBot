@@ -1,4 +1,8 @@
+mod dispatcher;
 mod event;
-pub mod message;
+mod message;
 
-pub use event::{EventEnvelope, EventType};
+pub use dispatcher::{EventDispatcher, EventHandler};
+pub use event::EventEnvelope;
+pub use message::MessageEvent;
+

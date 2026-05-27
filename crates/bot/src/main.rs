@@ -1,4 +1,4 @@
-mod event;
+mod handler;
 
 use lark::WebSocketClient;
 
@@ -56,7 +56,7 @@ async fn main() {
     // 接收事件并处理
     while let Some(event) = websocket.recv().await {
         tokio::spawn(async move {
-            event::handle(event).await;
+            handler::handle(event).await;
         });
     }
 

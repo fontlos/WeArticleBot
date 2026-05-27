@@ -1,20 +1,19 @@
+//! 飞书 WS 事件信封解析
+
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
 use crate::error::Result;
 
-// =====================
-// 飞书 WS 回调解析
-// =====================
-
 // WebSocket 事件信封
 #[derive(Debug, Deserialize)]
-pub struct EventEnvelope<'e> {
+pub struct EventEnvelope {
     // 这基本就是版本号, '2.0', 没什么用
     schema: String,
     header: EventHeader,
-    #[serde(borrow)]
-    pub event: &'e RawValue,
+    // 装箱简化生命周期
+    event: Box<RawValue>,
 }
 
 /// 事件头
@@ -30,16 +29,8 @@ struct EventHeader {
     token: String,
 }
 
-// 不用于解析, 只用于匹配
-/// 事件类型
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EventType {
-    ImMessageReceive,
-    Unsupported,
-}
-
-impl<'e> EventEnvelope<'e> {
-    pub fn from_bytes(bytes: &'e [u8]) -> Result<Self> {
+impl EventEnvelope {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let envelope: EventEnvelope = serde_json::from_slice(bytes)?;
         Ok(envelope)
     }
@@ -58,16 +49,8 @@ impl<'e> EventEnvelope<'e> {
 
     /// 原始事件类型
     #[inline]
-    pub fn event_type_raw(&self) -> &str {
+    pub fn event_type(&self) -> &str {
         &self.header.event_type
-    }
-
-    /// 事件类型
-    pub fn event_type(&self) -> EventType {
-        match self.event_type_raw() {
-            "im.message.receive_v1" => EventType::ImMessageReceive,
-            _ => EventType::Unsupported,
-        }
     }
 
     /// 事件时间戳, 毫秒字符串
@@ -94,20 +77,8 @@ impl<'e> EventEnvelope<'e> {
         &self.header.token
     }
 
-    pub fn parse_event<E: Deserialize<'e>>(&self) -> Result<E> {
+    pub fn parse_event<E: DeserializeOwned>(&self) -> Result<E> {
         let event = serde_json::from_str(self.event.get())?;
         Ok(event)
     }
 }
-
-// #[derive(Debug, Deserialize)]
-// pub struct Event<E> {
-//     event: E,
-// }
-
-// impl <'de, E: Deserialize<'de>> Event<E> {
-//     pub fn from_bytes(bytes: &'de [u8]) -> Result<Self> {
-//         let event = serde_json::from_slice(bytes)?;
-//         Ok(event)
-//     }
-// }

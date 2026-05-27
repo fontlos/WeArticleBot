@@ -93,6 +93,20 @@ impl WebSocketClient {
         })
     }
     /// 获取事件接收器
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use lark::ws::client::WebSocketClient;
+    /// # async fn example() {
+    /// # let client = WebSocketClient::connect("app_id", "app_secret").await.unwrap();
+    /// while let Some(event) = websocket.recv().await {
+    ///     tokio::spawn(async move {
+    ///         handle(event).await;
+    ///     });
+    /// }
+    /// # }
+    /// ```
     pub async fn recv(&mut self) -> Option<Bytes> {
         self.event_receiver.recv().await
     }
