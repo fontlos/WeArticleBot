@@ -1,7 +1,7 @@
 //! 飞书 WS 事件信封解析
 
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use serde_json::value::RawValue;
 
 use crate::error::Result;

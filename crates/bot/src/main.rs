@@ -53,14 +53,24 @@ async fn main() {
         .await
         .expect("Failed to initialize Lark bot");
 
-    // 接收事件并处理
-    while let Some(event) = websocket.recv().await {
-        tokio::spawn(async move {
-            handler::handle(event).await;
-        });
+    loop {
+        tokio::select! {
+            Some(event) = websocket.recv() => {
+                tokio::spawn(async move {
+                    handler::handle(event).await;
+                });
+            }
+            _ = tokio::signal::ctrl_c() => {
+                println!("Received Ctrl+C");
+                websocket.stop_graceful().await;
+                break;
+            }
+        }
     }
 
-    // let cookie = std::fs::File::open("cookie.json").unwrap();
-    // let mut buffer = std::io::BufWriter::new(cookie);
-    // wechat().save(&mut buffer).unwrap();
+    println!("WebSocket client stopped");
+
+    let cookie = std::fs::File::open("cookie.json").unwrap();
+    let mut buffer = std::io::BufWriter::new(cookie);
+    wechat().save(&mut buffer).unwrap();
 }
