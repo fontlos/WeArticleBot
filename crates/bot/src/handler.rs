@@ -29,37 +29,20 @@ async fn handle_unsupported_event(envelope: EventEnvelope) -> lark::error::Resul
 
 async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()> {
     let msg_event = envelope.parse_event::<MessageEvent>()?;
-    let chat_id = msg_event.message.chat_id;
-    let content_str = msg_event.message.content;
+    let chat_id = msg_event.chat_id();
+    let text = msg_event.text().unwrap_or_default();
+    let trimmed = text.trim();
 
-    // 解析 content 获取文本
-    let content: serde_json::Value = serde_json::from_str(&content_str).unwrap();
-    let text = content["text"].as_str().unwrap_or("");
+    let mut parts = trimmed.splitn(2, char::is_whitespace);
+    let cmd = parts.next().unwrap_or_default();
+    let _args = parts.next().unwrap_or_default();
 
-    // 去掉 @ 标记
-    let clean_text = text.replace("@_user_1", "").trim().to_string();
-    let (cmd, _args) = parse_command(&clean_text);
     match cmd {
-        "help" => send_help(&chat_id).await,
         "login" => send_login_qrcode(&chat_id).await,
-        _ => {}
+        _ => send_help(&chat_id).await,
     }
 
     Ok(())
-}
-
-/// 解析命令, 错误的命令统统返回帮助信息
-pub fn parse_command(input: &str) -> (&str, &str) {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return ("help", "");
-    }
-
-    let mut parts = trimmed.splitn(2, char::is_whitespace);
-    let cmd = parts.next().unwrap_or("help");
-    let args = parts.next().unwrap_or("");
-
-    (cmd, args)
 }
 
 async fn send_help(chat_id: &str) {
