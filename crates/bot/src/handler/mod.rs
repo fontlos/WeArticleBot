@@ -1,3 +1,5 @@
+mod login;
+
 use std::sync::OnceLock;
 
 use bytes::Bytes;
@@ -38,7 +40,7 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
     let _args = parts.next().unwrap_or_default();
 
     match cmd {
-        "login" => send_login_qrcode(&chat_id).await,
+        "login" => login::scan_login(&chat_id).await,
         _ => send_help(&chat_id).await,
     }
 
@@ -53,20 +55,4 @@ async fn send_help(chat_id: &str) {
 
     let msg = Message::to_chat(chat_id).text(help_text);
     session.send_message(msg).await.unwrap();
-}
-
-async fn send_login_qrcode(chat_id: &str) {
-    let lark = crate::lark();
-    let wechat = crate::wechat();
-
-    let msg = Message::to_chat(chat_id).text("正在获取微信登录二维码...");
-    lark.send_message(msg).await.unwrap();
-
-    wechat.create_session().await.unwrap();
-    let qrcode_bytes = wechat.get_qrcode().await.unwrap();
-
-    let image_key = lark.upload_image(&qrcode_bytes).await.unwrap();
-
-    let img = Message::to_chat(chat_id).image(&image_key);
-    lark.send_message(img).await.unwrap();
 }
