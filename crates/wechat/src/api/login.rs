@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use serde::Deserialize;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::session::Session;
 use crate::utils;
 
@@ -9,11 +9,6 @@ use super::data::Res;
 
 impl Session {
     pub async fn create_session(&self) -> Result<String> {
-        #[derive(Deserialize)]
-        struct I {
-            uuid: String,
-        }
-
         let url = "https://mp.weixin.qq.com/cgi-bin/bizlogin?action=startlogin";
         let sid = utils::random_string(16);
         let form = [
@@ -27,7 +22,18 @@ impl Session {
             ("ajax", "1"),
         ];
         // {"base_resp":{"err_msg":"ok","ret":0},"uuid":""}
-        let bytes = self.client.post(url).form(&form).send().await?.bytes().await?;
+        let bytes = self
+            .client
+            .post(url)
+            .form(&form)
+            .send()
+            .await?
+            .bytes()
+            .await?;
+        #[derive(Deserialize)]
+        struct I {
+            uuid: String,
+        }
         let res: I = Res::parse(&bytes)?;
         Ok(res.uuid)
     }
@@ -49,16 +55,13 @@ impl Session {
     // - `status=4/6`：扫码成功，等待确认
     // - `status=5`：不支持扫码登录
     pub async fn check_qrcode(&self) -> Result<i32> {
+        let url = "https://mp.weixin.qq.com/cgi-bin/scanloginqrcode?action=ask&token=&lang=zh_CN&f=json&ajax=1";
+        let bytes = self.client.get(url).send().await?.bytes().await?;
         #[derive(Deserialize)]
         struct I {
             status: i32,
         }
-
-        let url = "https://mp.weixin.qq.com/cgi-bin/scanloginqrcode?action=ask&token=&lang=zh_CN&f=json&ajax=1";
-        let bytes = self.client.get(url).send().await?.bytes().await?;
-        println!("Url: {}", url);
         let res: I = Res::parse(&bytes)?;
-        println!("Check QR code response: {}", res.status);
         Ok(res.status)
     }
 
@@ -77,10 +80,28 @@ impl Session {
             ("f", "json"),
             ("ajax", "1"),
         ];
-        let res = self.client.post(url).form(&form).send().await?;
-        println!("Url: {}", url);
-        let text = res.text().await?;
-        println!("Login response: {}", text);
+        let bytes = self
+            .client
+            .post(url)
+            .form(&form)
+            .send()
+            .await?
+            .bytes()
+            .await?;
+        // println!("Login response: {}", String::from_utf8_lossy(&bytes));
+        #[derive(Deserialize)]
+        struct I {
+            redirect_url: String,
+        }
+        let res: I = Res::parse(&bytes).unwrap();
+        // 第一步定位 token=, 第二步寻找&或直接匹配到末尾, 找不到要返回错误
+        let token = res
+            .redirect_url
+            .split("token=")
+            .nth(1)
+            .and_then(|s| s.split('&').next())
+            .ok_or_else(|| Error::Custom("登录重定向 URL 中缺少 token".to_string()))?;
+        self.set_token(token.to_string());
         Ok(())
     }
 

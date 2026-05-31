@@ -6,6 +6,7 @@ authors.workspace = true
 
 
 [dependencies]
+arc-swap ={ workspace = true }
 bytes = { workspace = true }
 reqwest = { workspace = true, features = ["cookies", "form", "json", "query"] }
 serde = { workspace = true }

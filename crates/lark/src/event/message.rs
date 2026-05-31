@@ -89,7 +89,7 @@ impl MessageEvent {
             } else {
                 // 如果以 @ 开头, 则去掉这一部分
                 // TODO: 这只是个临时方案因为这应该只是个标记也可以在文本内部出现
-                if text.starts_with("@"){
+                if text.starts_with("@") {
                     let parts: Vec<&str> = text.splitn(2, char::is_whitespace).collect();
                     if parts.len() == 2 {
                         Some(parts[1].to_string())

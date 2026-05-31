@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use cookie_store::CookieStore;
 use reqwest::Client;
 use reqwest::header::{HeaderMap, ORIGIN, REFERER, USER_AGENT};
@@ -29,36 +30,48 @@ fn client(cookie: Arc<CookieStoreMutex>) -> Client {
 #[derive(Debug)]
 pub struct Session {
     pub client: Client,
-    pub cookie_store: Arc<CookieStoreMutex>,
+    pub cookie: Arc<CookieStoreMutex>,
+    pub token: ArcSwap<String>,
 }
 
 impl Session {
-    #[allow(dead_code)]
     pub fn new() -> Self {
-        let cookie_store = Arc::new(CookieStoreMutex::new(CookieStore::default()));
-        let client = client(cookie_store.clone());
+        let cookie = Arc::new(CookieStoreMutex::new(CookieStore::default()));
+        let client = client(cookie.clone());
+        let token = ArcSwap::default();
         Self {
             client,
-            cookie_store,
+            cookie,
+            token,
         }
+    }
+
+    pub fn token(&self) -> String {
+        self.token.load().to_string()
+    }
+
+    pub fn set_token(&self, token: String) {
+        self.token.store(token.into());
     }
 
     /// 仅用于测试
     #[allow(dead_code)]
     pub fn load<R: BufRead>(reader: R) -> Result<Self> {
         let cookie_store = CookieStore::load_all(reader, |s| serde_json::from_str(s))?;
-        let cookie_store = Arc::new(CookieStoreMutex::new(cookie_store));
-        let client = client(cookie_store.clone());
+        let cookie = Arc::new(CookieStoreMutex::new(cookie_store));
+        let client = client(cookie.clone());
+        let token = ArcSwap::default();
         Ok(Self {
             client,
-            cookie_store,
+            cookie,
+            token,
         })
     }
 
     /// 仅用于测试
     #[allow(dead_code)]
     pub fn save<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let cookie_store = self.cookie_store.lock().unwrap();
+        let cookie_store = self.cookie.lock().unwrap();
         cookie_store.save_incl_expired_and_nonpersistent(writer, serde_json::to_string)?;
         Ok(())
     }

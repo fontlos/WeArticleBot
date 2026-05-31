@@ -157,7 +157,7 @@ impl WebSocketClient {
 
         // 三秒后如果还没成功, 则强制终止异步线程, 防止 Close 帧丢失导致的僵尸线程
         match tokio::time::timeout(Duration::from_secs(3), shutdown).await {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(_) => {
                 if let Some(handle) = self.send_handle.take() {
                     handle.abort();

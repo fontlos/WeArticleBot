@@ -15,6 +15,7 @@ authors = ["Fontlos <fontlos@fontlos.com>"]
 lark = { path = "crates/lark" }
 wechat = { path = "crates/wechat" }
 
+arc-swap = "1.9.1"
 bytes = "1.11.1"
 log = "0.4.29"
 reqwest = "0.13.3"
