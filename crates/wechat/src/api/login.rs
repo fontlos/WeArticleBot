@@ -88,7 +88,9 @@ impl Session {
             .await?
             .bytes()
             .await?;
-        // println!("Login response: {}", String::from_utf8_lossy(&bytes));
+
+        println!("登录响应: {}", String::from_utf8_lossy(&bytes));
+
         #[derive(Deserialize)]
         struct I {
             redirect_url: String,
@@ -101,17 +103,7 @@ impl Session {
             .nth(1)
             .and_then(|s| s.split('&').next())
             .ok_or_else(|| Error::Custom("登录重定向 URL 中缺少 token".to_string()))?;
-        self.set_token(token.to_string());
-        Ok(())
-    }
-
-    pub async fn login_check(&self) -> Result<()> {
-        let url = "https://mp.weixin.qq.com/cgi-bin/home";
-        let query = [("t", "home/index"), ("token", "{TOKEN}"), ("lang", "zh_CN")];
-        let res = self.client.get(url).query(&query).send().await?;
-        println!("Url: {}", url);
-        let text = res.text().await?;
-        println!("Login check response: {}", text);
+        self.set_token(token);
         Ok(())
     }
 }

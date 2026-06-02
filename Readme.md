@@ -22,4 +22,4 @@
 
 - 订阅方式: 选择 **长连接**
 - 已添加事件
-  - im.message.receive_v1: 接收消息, @与单发
+  - im.message.receive_v1: 接收消息, 群聊@与P2P聊天

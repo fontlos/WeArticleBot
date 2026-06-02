@@ -30,4 +30,10 @@ pub async fn scan_login(chat_id: &str) {
             break;
         }
     }
+
+    wechat.login().await.unwrap();
+    let token = wechat.token();
+    println!("Login successful, token: {}", token);
+
+    super::info::fetch_profile(chat_id).await;
 }

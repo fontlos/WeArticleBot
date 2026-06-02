@@ -29,9 +29,9 @@ fn client(cookie: Arc<CookieStoreMutex>) -> Client {
 
 #[derive(Debug)]
 pub struct Session {
-    pub client: Client,
-    pub cookie: Arc<CookieStoreMutex>,
-    pub token: ArcSwap<String>,
+    pub(crate) client: Client,
+    pub(crate) cookie: Arc<CookieStoreMutex>,
+    pub(crate) token: ArcSwap<String>,
 }
 
 impl Session {
@@ -46,12 +46,12 @@ impl Session {
         }
     }
 
-    pub fn token(&self) -> String {
-        self.token.load().to_string()
+    pub fn token(&self) -> &ArcSwap<String> {
+        &self.token
     }
 
-    pub fn set_token(&self, token: String) {
-        self.token.store(token.into());
+    pub fn set_token(&self, token: &str) {
+        self.token.store(Arc::new(token.to_owned()));
     }
 
     /// 仅用于测试

@@ -70,7 +70,7 @@ async fn main() {
 
     println!("WebSocket client stopped");
 
-    let cookie = std::fs::File::open("cookies.json").unwrap();
+    let cookie = std::fs::File::create("cookies.json").unwrap();
     let mut buffer = std::io::BufWriter::new(cookie);
     wechat().save(&mut buffer).unwrap();
 }
