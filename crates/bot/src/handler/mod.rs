@@ -1,5 +1,6 @@
 mod info;
 mod login;
+mod search;
 
 use std::sync::OnceLock;
 
@@ -38,11 +39,12 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
 
     let mut parts = trimmed.splitn(2, char::is_whitespace);
     let cmd = parts.next().unwrap_or_default();
-    let _args = parts.next().unwrap_or_default();
+    let args = parts.next().unwrap_or_default();
 
     match cmd {
         "info" => info::fetch_profile(&chat_id).await,
         "login" => login::scan_login(&chat_id).await,
+        "search" => search::search_official(&chat_id, args).await,
         _ => send_help(&chat_id).await,
     }
 
