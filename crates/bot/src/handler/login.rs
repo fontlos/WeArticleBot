@@ -2,9 +2,11 @@ use lark::api::Message;
 
 use std::time::Duration;
 
+use crate::context;
+
 pub async fn scan_login(chat_id: &str) {
-    let lark = crate::lark();
-    let wechat = crate::wechat();
+    let lark = context::lark();
+    let wechat = context::wechat();
 
     let msg = Message::to_chat(chat_id).text("正在获取微信登录二维码...");
     lark.send_message(msg).await.unwrap();

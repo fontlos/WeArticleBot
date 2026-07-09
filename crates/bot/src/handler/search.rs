@@ -1,8 +1,10 @@
 use lark::api::Message;
 
+use crate::context;
+
 pub async fn search_official(chat_id: &str, key: &str) {
-    let lark = crate::lark();
-    let wechat = crate::wechat();
+    let lark = context::lark();
+    let wechat = context::wechat();
 
     let msg = Message::to_chat(chat_id).text("正在搜索公众号...");
     lark.send_message(msg).await.unwrap();

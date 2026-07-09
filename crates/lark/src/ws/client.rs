@@ -125,13 +125,13 @@ impl WebSocketClient {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # use lark::ws::client::WebSocketClient;
+    /// ```no_run
+    /// # use lark::WebSocketClient;
     /// # async fn example() {
-    /// # let client = WebSocketClient::connect("app_id", "app_secret").await.unwrap();
-    /// while let Some(event) = websocket.recv().await {
+    /// # let mut client = WebSocketClient::connect("app_id", "app_secret").await.unwrap();
+    /// while let Some(event) = client.recv().await {
     ///     tokio::spawn(async move {
-    ///         handle(event).await;
+    ///         // 分发事件给 handler
     ///     });
     /// }
     /// # }
