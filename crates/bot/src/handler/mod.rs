@@ -1,3 +1,4 @@
+mod help;
 mod info;
 mod login;
 mod search;
@@ -5,7 +6,6 @@ mod search;
 use std::sync::OnceLock;
 
 use bytes::Bytes;
-use lark::api::Message;
 use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
 
 pub async fn handle(event: Bytes) {
@@ -16,12 +16,13 @@ pub async fn handle(event: Bytes) {
     }
 }
 
+/// 事件分发器
 fn dispatcher() -> &'static EventDispatcher {
     static DISPATCHER: OnceLock<EventDispatcher> = OnceLock::new();
     DISPATCHER.get_or_init(|| {
         let mut dispatcher = EventDispatcher::new();
-        dispatcher.on("im.message.receive_v1", handle_message_event);
         dispatcher.fallback(handle_unsupported_event);
+        dispatcher.on("im.message.receive_v1", handle_message_event);
         dispatcher
     })
 }
@@ -45,19 +46,8 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
         "info" => info::fetch_profile(&chat_id).await,
         "login" => login::scan_login(&chat_id).await,
         "search" => search::search_official(&chat_id, args).await,
-        _ => send_help(&chat_id).await,
+        _ => help::send_help(&chat_id).await,
     }
 
     Ok(())
-}
-
-async fn send_help(chat_id: &str) {
-    let session = crate::lark();
-    let help_text = "命令提示
-- help: 显示帮助信息
-- info: 获取微信个人信息
-- login: 获取微信登录二维码";
-
-    let msg = Message::to_chat(chat_id).text(help_text);
-    session.send_message(msg).await.unwrap();
 }
