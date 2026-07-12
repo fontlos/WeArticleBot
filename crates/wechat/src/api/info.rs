@@ -7,16 +7,8 @@ impl Session {
     pub async fn fetch_profile(&self) -> Result<(String, String)> {
         let url = "https://mp.weixin.qq.com/cgi-bin/home";
         let token = &self.token.load();
-        let query = [
-            ("t", "home/index"),
-            ("token", token),
-            ("lang", "zh_CN"),
-        ];
-        let resp = self.client
-            .get(url)
-            .query(&query)
-            .send()
-            .await?;
+        let query = [("t", "home/index"), ("token", token), ("lang", "zh_CN")];
+        let resp = self.client.get(url).query(&query).send().await?;
 
         let html = resp.bytes().await?;
 

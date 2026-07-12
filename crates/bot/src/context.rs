@@ -22,7 +22,10 @@ pub async fn init() -> WebSocketClient {
     let wechat = wechat::Session::load(buffer).expect("failed to load wechat session");
 
     assert!(LARK.set(lark).is_ok(), "lark session already initialized");
-    assert!(WECHAT.set(wechat).is_ok(), "wechat session already initialized");
+    assert!(
+        WECHAT.set(wechat).is_ok(),
+        "wechat session already initialized"
+    );
 
     // TODO: 将 connect 方法独立出去, 使这里可以成为同步初始化函数
     WebSocketClient::connect(&app_id, &app_secret)
@@ -32,10 +35,13 @@ pub async fn init() -> WebSocketClient {
 
 /// 获取飞书会话
 pub fn lark() -> &'static lark::Session {
-    LARK.get().expect("context not initialized, call context::init first")
+    LARK.get()
+        .expect("context not initialized, call context::init first")
 }
 
 /// 获取微信会话
 pub fn wechat() -> &'static wechat::Session {
-    WECHAT.get().expect("context not initialized, call context::init first")
+    WECHAT
+        .get()
+        .expect("context not initialized, call context::init first")
 }
