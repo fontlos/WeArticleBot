@@ -1,3 +1,4 @@
+mod command;
 mod context;
 mod handler;
 mod logs;

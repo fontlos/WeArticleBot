@@ -3,10 +3,13 @@ mod info;
 mod login;
 mod search;
 
+use bytes::Bytes;
+
+use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
+
 use std::sync::OnceLock;
 
-use bytes::Bytes;
-use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
+use crate::command;
 
 pub async fn handle(event: Bytes) {
     println!("Received event: {}", String::from_utf8_lossy(&event));
@@ -36,18 +39,22 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
     let msg_event = envelope.parse_event::<MessageEvent>()?;
     let chat_id = msg_event.chat_id();
     let text = msg_event.text().unwrap_or_default();
-    let trimmed = text.trim();
 
-    let mut parts = trimmed.splitn(2, char::is_whitespace);
-    let cmd = parts.next().unwrap_or_default();
-    let args = parts.next().unwrap_or_default();
-
-    match cmd {
-        "info" => info::fetch_profile(&chat_id).await,
-        "login" => login::scan_login(&chat_id).await,
-        "search" => search::search_official(&chat_id, args).await,
-        _ => help::send_help(&chat_id).await,
+    match command::parse(&text) {
+        Ok(parsed) => match parsed.kind {
+            command::Kind::Help => {
+                help::send_help(chat_id, parsed.args.first().map(String::as_str)).await
+            }
+            command::Kind::Info => info::fetch_profile(chat_id).await,
+            command::Kind::Login => login::scan_login(chat_id).await,
+            command::Kind::Search => search::search_official(chat_id, &parsed.args[0]).await,
+        },
+        Err(command::Error::Unknown(name)) => {
+            help::reply(chat_id, &command::unknown_text(&name)).await;
+        }
+        Err(command::Error::InvalidArgs { spec, reason }) => {
+            help::reply(chat_id, &command::invalid_text(spec, &reason)).await;
+        }
     }
-
     Ok(())
 }
