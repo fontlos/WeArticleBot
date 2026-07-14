@@ -42,9 +42,7 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
 
     match command::parse(&text) {
         Ok(parsed) => match parsed.kind {
-            command::Kind::Help => {
-                help::send_help(chat_id, parsed.args.first().map(String::as_str)).await
-            }
+            command::Kind::Help => help::reply(chat_id, &command::general_help()).await,
             command::Kind::Info => info::fetch_profile(chat_id).await,
             command::Kind::Login => login::scan_login(chat_id).await,
             command::Kind::Search => search::search_official(chat_id, &parsed.args[0]).await,
