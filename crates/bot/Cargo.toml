@@ -9,6 +9,7 @@ lark = { workspace = true }
 wechat = { workspace = true }
 
 bytes = { workspace = true }
+log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }

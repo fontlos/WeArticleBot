@@ -1,4 +1,5 @@
 use lark::api::Message;
+use log::{debug, info};
 
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ pub async fn scan_login(chat_id: &str) {
     lark.send_message(msg).await.unwrap();
 
     let uuid = wechat.create_session().await.unwrap();
-    println!("Created WeChat session with UUID: {}", uuid);
+    info!("Created WeChat session with UUID: {}", uuid);
 
     let qrcode_bytes = wechat.get_qrcode().await.unwrap();
 
@@ -27,7 +28,7 @@ pub async fn scan_login(chat_id: &str) {
     loop {
         interval.tick().await;
         let status = wechat.check_qrcode().await.unwrap();
-        println!("QR code status: {}", status);
+        debug!("QR code status: {}", status);
         if status == 1 {
             break;
         }
@@ -35,7 +36,7 @@ pub async fn scan_login(chat_id: &str) {
 
     wechat.login().await.unwrap();
     let token = wechat.token();
-    println!("Login successful, token: {}", token);
+    debug!("Login successful, token: {}", token);
 
     super::info::fetch_profile(chat_id).await;
 }

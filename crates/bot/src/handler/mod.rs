@@ -4,18 +4,18 @@ mod login;
 mod search;
 
 use bytes::Bytes;
-
 use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
+use log::{debug, error, warn};
 
 use std::sync::OnceLock;
 
 use crate::command;
 
 pub async fn handle(event: Bytes) {
-    println!("Received event: {}", String::from_utf8_lossy(&event));
+    debug!("Received event: {}", String::from_utf8_lossy(&event));
 
     if let Err(e) = dispatcher().dispatch(&event).await {
-        eprintln!("事件处理失败: {}", e);
+        error!("Event dispatch failed: {}", e);
     }
 }
 
@@ -31,7 +31,7 @@ fn dispatcher() -> &'static EventDispatcher {
 }
 
 async fn handle_unsupported_event(envelope: EventEnvelope) -> lark::error::Result<()> {
-    println!("未处理的事件类型: {}", envelope.event_type());
+    warn!("Unsupported event type: {}", envelope.event_type());
     Ok(())
 }
 
@@ -48,9 +48,11 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
             command::Kind::Search => search::search_official(chat_id, &parsed.args[0]).await,
         },
         Err(command::Error::Unknown(name)) => {
+            warn!("Unknown command: {}", name);
             help::reply(chat_id, &command::unknown_text(&name)).await;
         }
         Err(command::Error::InvalidArgs { spec, reason }) => {
+            warn!("Invalid command: {}", spec.name);
             help::reply(chat_id, &command::invalid_text(spec, &reason)).await;
         }
     }

@@ -19,14 +19,14 @@ async fn main() {
                 });
             }
             _ = tokio::signal::ctrl_c() => {
-                println!("Received Ctrl+C");
+                log::info!("Received Ctrl+C");
                 websocket.stop_graceful().await;
                 break;
             }
         }
     }
 
-    println!("WebSocket client stopped");
+    log::info!("WebSocket client stopped");
 
     let cookie = std::fs::File::create("cookies.json").unwrap();
     let mut buffer = std::io::BufWriter::new(cookie);

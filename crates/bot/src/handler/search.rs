@@ -1,4 +1,5 @@
 use lark::api::Message;
+use log::debug;
 
 use crate::context;
 
@@ -12,5 +13,5 @@ pub async fn search_official(chat_id: &str, key: &str) {
     wechat.set_token("724245888");
 
     let res = wechat.search(key, 1).await.unwrap();
-    println!("Search result: {}", String::from_utf8_lossy(&res));
+    debug!("Search result: {}", String::from_utf8_lossy(&res));
 }
