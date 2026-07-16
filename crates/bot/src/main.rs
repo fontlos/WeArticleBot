@@ -8,25 +8,18 @@ async fn main() {
     // 初始化日志
     logs::init();
 
-    // 初始化全局上下文并建立飞书长连接
-    let mut websocket = context::init().await;
+    // 同步初始化全局上下文(env / cookie / 会话)
+    context::init();
 
-    loop {
-        tokio::select! {
-            Some(event) = websocket.recv() => {
-                tokio::spawn(async move {
-                    handler::handle(event).await;
-                });
-            }
-            _ = tokio::signal::ctrl_c() => {
-                log::info!("Received Ctrl+C");
-                websocket.stop_graceful().await;
-                break;
-            }
-        }
-    }
-
-    log::info!("WebSocket client stopped");
+    // 建立飞书长连接, 运行事件循环直到收到 Ctrl+C
+    let websocket = context::connect().await;
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    websocket
+        .run(ctrl_c, |event| handler::handle(event))
+        .await
+        .expect("websocket run failed");
 
     let cookie = std::fs::File::create("cookies.json").unwrap();
     let mut buffer = std::io::BufWriter::new(cookie);

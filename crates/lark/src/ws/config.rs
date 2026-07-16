@@ -1,3 +1,5 @@
+//! WS 客户端连接配置
+
 use reqwest::Client;
 use serde::Deserialize;
 

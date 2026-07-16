@@ -5,12 +5,13 @@ use std::sync::OnceLock;
 
 use lark::WebSocketClient;
 
+static APP_ID: OnceLock<String> = OnceLock::new();
+static APP_SECRET: OnceLock<String> = OnceLock::new();
 static LARK: OnceLock<lark::Session> = OnceLock::new();
 static WECHAT: OnceLock<wechat::Session> = OnceLock::new();
 
-/// 初始化全局上下文并建立飞书长连接, 只能调用一次
-/// TODO: 长连接建立的最后一步应该移动到外面
-pub async fn init() -> WebSocketClient {
+/// 同步初始化: 环境变量 / cookie / 会话, 只能调用一次
+pub fn init() {
     dotenvy::dotenv().ok();
     let app_id = env::var("APP_ID").expect("APP_ID not set");
     let app_secret = env::var("APP_SECRET").expect("APP_SECRET not set");
@@ -21,14 +22,21 @@ pub async fn init() -> WebSocketClient {
     let lark = lark::Session::new(&app_id, &app_secret);
     let wechat = wechat::Session::load(buffer).expect("failed to load wechat session");
 
+    assert!(APP_ID.set(app_id).is_ok(), "app_id already initialized");
+    assert!(APP_SECRET.set(app_secret).is_ok(), "app_secret already initialized");
     assert!(LARK.set(lark).is_ok(), "lark session already initialized");
-    assert!(
-        WECHAT.set(wechat).is_ok(),
-        "wechat session already initialized"
-    );
+    assert!(WECHAT.set(wechat).is_ok(), "wechat session already initialized");
+}
 
-    // TODO: 将 connect 方法独立出去, 使这里可以成为同步初始化函数
-    WebSocketClient::connect(&app_id, &app_secret)
+/// 建立飞书长连接(需先调用 init)
+pub async fn connect() -> WebSocketClient {
+    let app_id = APP_ID
+        .get()
+        .expect("context not initialized, call context::init first");
+    let app_secret = APP_SECRET
+        .get()
+        .expect("context not initialized, call context::init first");
+    WebSocketClient::connect(app_id, app_secret)
         .await
         .expect("Failed to initialize Lark bot")
 }

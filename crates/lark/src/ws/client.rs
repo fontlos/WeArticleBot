@@ -7,6 +7,7 @@ use tokio::task::JoinHandle;
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
 
+use std::future::Future;
 use std::time::Duration;
 
 use crate::error::Result;
@@ -170,5 +171,38 @@ impl WebSocketClient {
         }
 
         debug!("WebSocket client stopped");
+    }
+
+    /// 运行事件循环, 直到收到关闭信号
+    ///
+    /// 整合 recv() 和 stop_graceful() 的调用
+    pub async fn run<F, Fut, S>(mut self, shutdown: S, handler: F) -> Result<()>
+    where
+        S: Future<Output = ()> + Send,
+        F: Fn(Bytes) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        tokio::pin!(shutdown);
+        loop {
+            tokio::select! {
+                event = self.recv() => match event {
+                    Some(event) => {
+                        tokio::spawn(handler(event));
+                    }
+                    None => {
+                        // 事件通道已关闭(连接断开等)
+                        // TODO: 先收尾退出, 也许需要重连机制
+                        debug!("Event channel closed, stopping");
+                        self.stop_graceful().await;
+                        return Ok(());
+                    }
+                },
+                _ = &mut shutdown => {
+                    debug!("Shutdown signal received");
+                    self.stop_graceful().await;
+                    return Ok(());
+                }
+            }
+        }
     }
 }
