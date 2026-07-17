@@ -5,14 +5,18 @@ mod logs;
 
 #[tokio::main]
 async fn main() {
+    // 加载 .env 文件
+    dotenvy::dotenv().ok();
     // 初始化日志
     logs::init();
-
-    // 同步初始化全局上下文(env / cookie / 会话)
+    // 初始化全局上下文 (Lark 和 WeChat 会话)
     context::init();
 
-    // 建立飞书长连接, 运行事件循环直到收到 Ctrl+C
-    let websocket = context::connect().await;
+    // 基于会话凭据建立飞书长连接, 运行事件循环直到收到 Ctrl+C
+    let websocket = context::lark()
+        .connect_ws()
+        .await
+        .expect("Failed to initialize Lark bot");
     let ctrl_c = async {
         let _ = tokio::signal::ctrl_c().await;
     };

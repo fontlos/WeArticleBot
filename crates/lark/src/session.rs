@@ -3,6 +3,9 @@ use reqwest::Client;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::error::Result;
+use crate::ws::WebSocketClient;
+
 #[derive(Debug)]
 pub struct Session {
     pub client: Client,
@@ -31,5 +34,10 @@ impl Session {
     pub fn set_token(&self, token: String, expire: u64) {
         self.token.store(token.into());
         self.expire.store(expire, Ordering::Release);
+    }
+
+    /// 建立飞书长连接
+    pub async fn connect_ws(&self) -> Result<WebSocketClient> {
+        WebSocketClient::connect(&self.app_id, &self.app_secret).await
     }
 }
