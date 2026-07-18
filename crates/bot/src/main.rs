@@ -25,7 +25,5 @@ async fn main() {
         .await
         .expect("websocket run failed");
 
-    let cookie = std::fs::File::create("cookies.json").unwrap();
-    let mut buffer = std::io::BufWriter::new(cookie);
-    context::wechat().save(&mut buffer).unwrap();
+    context::save();
 }

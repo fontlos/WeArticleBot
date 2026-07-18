@@ -32,3 +32,10 @@ pub fn wechat() -> &'static wechat::Session {
         .get()
         .expect("context not initialized, call context::init first")
 }
+
+/// 保存会话状态
+pub fn save() {
+    let cookie = std::fs::File::create("cookies.json").expect("failed to create cookies.json");
+    let mut buffer = std::io::BufWriter::new(cookie);
+    wechat().save(&mut buffer).expect("failed to save wechat session");
+}
