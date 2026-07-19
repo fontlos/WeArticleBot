@@ -11,6 +11,7 @@ use std::sync::OnceLock;
 
 use crate::command;
 
+// 处理飞书事件
 pub async fn handle(event: Bytes) {
     debug!("Received event: {}", String::from_utf8_lossy(&event));
 
@@ -20,8 +21,8 @@ pub async fn handle(event: Bytes) {
 }
 
 /// 事件分发器
+static DISPATCHER: OnceLock<EventDispatcher> = OnceLock::new();
 fn dispatcher() -> &'static EventDispatcher {
-    static DISPATCHER: OnceLock<EventDispatcher> = OnceLock::new();
     DISPATCHER.get_or_init(|| {
         let mut dispatcher = EventDispatcher::new();
         dispatcher.fallback(handle_unsupported_event);
@@ -30,11 +31,13 @@ fn dispatcher() -> &'static EventDispatcher {
     })
 }
 
+/// 处理不支持的事件类型
 async fn handle_unsupported_event(envelope: EventEnvelope) -> lark::error::Result<()> {
     warn!("Unsupported event type: {}", envelope.event_type());
     Ok(())
 }
 
+/// 处理消息事件
 async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()> {
     let msg_event = envelope.parse_event::<MessageEvent>()?;
     let chat_id = msg_event.chat_id();

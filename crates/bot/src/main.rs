@@ -12,18 +12,21 @@ async fn main() {
     // 初始化全局上下文 (Lark 和 WeChat 会话)
     context::init();
 
-    // 基于会话凭据建立飞书长连接, 运行事件循环直到收到 Ctrl+C
+    // 建立飞书长连接
     let websocket = context::lark()
         .connect_ws()
         .await
         .expect("Failed to initialize Lark bot");
+    // 停机信号
     let ctrl_c = async {
         let _ = tokio::signal::ctrl_c().await;
     };
+    // 运行事件循环
     websocket
         .run(ctrl_c, |event| handler::handle(event))
         .await
         .expect("websocket run failed");
 
+    // 保存会话状态
     context::save();
 }

@@ -17,6 +17,7 @@ pub struct ArgSpec {
 }
 
 impl ArgSpec {
+    /// 必填参数
     pub const fn required(name: &'static str) -> Self {
         Self {
             name,
@@ -24,6 +25,7 @@ impl ArgSpec {
         }
     }
 
+    /// 可选参数
     pub const fn optional(name: &'static str) -> Self {
         Self {
             name,
@@ -32,7 +34,7 @@ impl ArgSpec {
     }
 }
 
-/// 命令元数据(帮助与校验的唯一数据源)
+/// 命令元数据
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandSpec {
     pub name: &'static str,
@@ -42,7 +44,7 @@ pub struct CommandSpec {
 }
 
 impl CommandSpec {
-    /// 生成用法字符串, 例如 "search <关键词>" / "help [命令]"
+    /// 生成用法字符串
     pub fn usage(&self) -> String {
         let mut usage = String::with_capacity(16 + self.args.len() * 8);
         usage.push_str(self.name);
@@ -67,7 +69,7 @@ impl CommandSpec {
     }
 }
 
-/// 命令表: 编译期常量, 名字/描述/参数规格/类型唯一出处
+/// 命令表
 pub static COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         name: "help",
@@ -95,7 +97,7 @@ pub static COMMANDS: &[CommandSpec] = &[
     },
 ];
 
-/// 解析结果: 命令类型 + 已校验的参数列表
+/// 解析结果
 #[derive(Debug, PartialEq)]
 pub struct Parsed {
     pub kind: Kind,
@@ -105,9 +107,9 @@ pub struct Parsed {
 /// 解析错误
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    /// 未注册的命令
+    /// 未知命令
     Unknown(String),
-    /// 参数个数不满足命令定义
+    /// 无效参数
     InvalidArgs {
         spec: &'static CommandSpec,
         reason: InvalidArgs,
@@ -132,7 +134,7 @@ pub fn parse(text: &str) -> Result<Parsed, Error> {
     };
     let args: Vec<String> = parts.map(str::to_owned).collect();
 
-    // 按名字查表, 命令类型直接取 spec.kind, 不手写字符串映射
+    // 按名字查表, 命令类型直接取 spec.kind
     let Some(spec) = COMMANDS.iter().find(|c| c.name == name) else {
         return Err(Error::Unknown(name.to_owned()));
     };
@@ -176,7 +178,7 @@ pub fn unknown_text(name: &str) -> String {
     format!("未知命令: {name}\n输入 help 查看可用命令")
 }
 
-/// 参数错误提示文本
+/// 无效参数提示文本
 pub fn invalid_text(spec: &CommandSpec, reason: &InvalidArgs) -> String {
     match reason {
         InvalidArgs::MissingArg(arg) => {
