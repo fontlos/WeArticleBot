@@ -1,10 +1,14 @@
 use arc_swap::ArcSwap;
+use bytes::Bytes;
+use log::error;
 use reqwest::Client;
+use tokio_util::sync::CancellationToken;
 
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::Result;
-use crate::ws::WebSocketClient;
+use crate::ws::{StopReason, WebSocketClient};
 
 #[derive(Debug)]
 pub struct Session {
@@ -36,8 +40,38 @@ impl Session {
         self.expire.store(expire, Ordering::Release);
     }
 
-    /// 建立飞书长连接
-    pub async fn connect_ws(&self) -> Result<WebSocketClient> {
-        WebSocketClient::connect(&self.app_id, &self.app_secret).await
+    /// 建立长连接并运行事件循环
+    pub async fn run_ws<F, Fut>(&self, shutdown: CancellationToken, handler: F) -> Result<()>
+    where
+        F: Fn(Bytes) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        // 获取一次 endpoint 配置, 重连时复用
+        let endpoint = WebSocketClient::get_endpoint(&self.app_id, &self.app_secret).await?;
+        let mut attempt: u32 = 0;
+
+        loop {
+            if shutdown.is_cancelled() {
+                return Ok(());
+            }
+
+            let reason = match WebSocketClient::connect_with_endpoint(endpoint.clone()).await {
+                Ok(client) => client.run(shutdown.cancelled(), &handler).await,
+                Err(e) => {
+                    error!("WebSocket connect failed: {e}");
+                    StopReason::ConnectionLost
+                }
+            };
+
+            match reason {
+                StopReason::Shutdown => return Ok(()),
+                StopReason::ConnectionLost => {}
+            }
+
+            attempt += 1;
+            if !endpoint.config.sleep_backoff(attempt, &shutdown).await {
+                return Ok(());
+            }
+        }
     }
 }

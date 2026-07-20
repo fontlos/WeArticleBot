@@ -12,8 +12,17 @@ use std::time::Duration;
 
 use crate::error::Result;
 
-use super::config::config;
+use super::config::{ws_endpoint, WsEndpoint};
 use super::proto::Frame;
+
+/// 事件循环退出原因
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StopReason {
+    /// 收到停机信号
+    Shutdown,
+    /// 连接断开/出错
+    ConnectionLost,
+}
 
 pub struct WebSocketClient {
     event_rx: mpsc::UnboundedReceiver<Bytes>,
@@ -24,13 +33,21 @@ pub struct WebSocketClient {
 
 impl WebSocketClient {
     pub async fn connect(app_id: &str, app_secret: &str) -> Result<Self> {
-        let config = config(app_id, app_secret).await?;
+        let endpoint = Self::get_endpoint(app_id, app_secret).await?;
+        Self::connect_with_endpoint(endpoint).await
+    }
+
+    pub async fn get_endpoint(app_id: &str, app_secret: &str) -> Result<WsEndpoint> {
+        ws_endpoint(app_id, app_secret).await
+    }
+
+    pub async fn connect_with_endpoint(endpoint: WsEndpoint) -> Result<Self> {
         // 建立 WebSocket 连接, 防止过大的消息导致的攻击
         let ws_config = WebSocketConfig::default()
             .max_message_size(Some(10 * 1024 * 1024))
             .max_frame_size(Some(10 * 1024 * 1024));
         // Websocket 的状态响应基本没用, 丢弃
-        let (ws_stream, _) = ws_connect(&config.url, Some(ws_config), false).await?;
+        let (ws_stream, _) = ws_connect(&endpoint.url, Some(ws_config), false).await?;
         let (mut ws_write, mut ws_read) = ws_stream.split();
         // 停机信号通道
         let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
@@ -41,7 +58,7 @@ impl WebSocketClient {
         let (resp_tx, mut resp_rx) = mpsc::unbounded_channel::<Message>();
 
         // Websocket 发送循环: 心跳 / 响应 Event / 关闭连接
-        let ping_interval = Duration::from_secs(config.config.ping as u64);
+        let ping_interval = Duration::from_secs(endpoint.config.ping as u64);
         let mut interval = tokio::time::interval(ping_interval);
         let send_handle = tokio::spawn(async move {
             loop {
@@ -175,11 +192,11 @@ impl WebSocketClient {
 
     /// 运行事件循环, 直到收到关闭信号
     ///
-    /// 整合 recv() 和 stop_graceful() 的调用
-    pub async fn run<F, Fut, S>(mut self, shutdown: S, handler: F) -> Result<()>
+    /// 整合 recv() 和 stop_graceful() 的调用, 返回退出原因
+    pub async fn run<F, Fut, S>(mut self, shutdown: S, handler: &F) -> StopReason
     where
         S: Future<Output = ()> + Send,
-        F: Fn(Bytes) -> Fut + Send + Sync + 'static,
+        F: Fn(Bytes) -> Fut + Send + Sync + ?Sized,
         Fut: Future<Output = ()> + Send + 'static,
     {
         tokio::pin!(shutdown);
@@ -190,17 +207,16 @@ impl WebSocketClient {
                         tokio::spawn(handler(event));
                     }
                     None => {
-                        // 事件通道已关闭(连接断开等)
-                        // TODO: 先收尾退出, 也许需要重连机制
-                        debug!("Event channel closed, stopping");
+                        // 事件通道已关闭: 连接断开/出错
+                        debug!("Event channel closed, connection lost");
                         self.stop_graceful().await;
-                        return Ok(());
+                        return StopReason::ConnectionLost;
                     }
                 },
                 _ = &mut shutdown => {
                     debug!("Shutdown signal received");
                     self.stop_graceful().await;
-                    return Ok(());
+                    return StopReason::Shutdown;
                 }
             }
         }
