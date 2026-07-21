@@ -9,8 +9,8 @@ static WECHAT: OnceLock<wechat::Session> = OnceLock::new();
 
 /// 初始化全局上下文, 并尝试恢复上次的会话状态
 pub fn init() {
-    let app_id = env::var("APP_ID").expect("APP_ID not set");
-    let app_secret = env::var("APP_SECRET").expect("APP_SECRET not set");
+    let app_id = env::var("LARK_APP_ID").expect("APP_ID not set");
+    let app_secret = env::var("LARK_APP_SECRET").expect("APP_SECRET not set");
 
     let cookie = std::fs::File::open("cookies.json").expect("failed to open cookies.json");
     let buffer = std::io::BufReader::new(cookie);
