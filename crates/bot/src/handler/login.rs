@@ -31,13 +31,35 @@ pub async fn scan_login(chat_id: &str) {
         interval.tick().await;
         let status = wechat.check_qrcode().await.unwrap();
         debug!("QR code status: {}", status);
-        if status == 1 {
-            break;
+        match status {
+            0 => debug!("Waiting for scan..."),
+            1 => {
+                info!("Login successful, continuing...");
+                // 继续完成登录
+                wechat.login().await.unwrap();
+                let token = wechat.token();
+                debug!("Login successful, token: {}", token);
+                break;
+            },
+            2 | 3 => {
+                info!("QR code expired, please refresh.");
+                let msg = Message::to_chat(chat_id).text("二维码已失效, 请重新获取登录");
+                lark.send_message(msg).await.unwrap();
+                break;
+            }
+            4 | 6 => info!("Scan successful, waiting for confirmation..."),
+            5 => {
+                info!("Scan login not supported.");
+                let msg = Message::to_chat(chat_id).text("不支持扫码登录");
+                lark.send_message(msg).await.unwrap();
+                break;
+            }
+            _ => {
+                info!("Unknown status: {}", status);
+                let msg = Message::to_chat(chat_id).text("未知的二维码状态, 无法登录");
+                lark.send_message(msg).await.unwrap();
+                break;
+            }
         }
     }
-
-    // 继续完成登录
-    wechat.login().await.unwrap();
-    let token = wechat.token();
-    debug!("Login successful, token: {}", token);
 }

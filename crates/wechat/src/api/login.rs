@@ -8,6 +8,8 @@ use crate::utils;
 use super::data::Res;
 
 impl Session {
+    /// # 创建微信会话
+    /// 返回会话的 UUID, 暂无主动用途
     pub async fn create_session(&self) -> Result<String> {
         let url = "https://mp.weixin.qq.com/cgi-bin/bizlogin?action=startlogin";
         let sid = utils::random_string(16);
@@ -48,12 +50,12 @@ impl Session {
         Ok(bytes)
     }
 
-    /// 检查二维码状态
-    // - `status=0`：等待扫描
-    // - `status=1`：扫码成功，继续登录
-    // - `status=2/3`：二维码已失效，需刷新
-    // - `status=4/6`：扫码成功，等待确认
-    // - `status=5`：不支持扫码登录
+    /// # 检查二维码状态
+    /// - `status=0`: 等待扫描
+    /// - `status=1`: 扫码成功，继续登录
+    /// - `status=2/3`: 二维码已失效，需刷新
+    /// - `status=4/6`: 扫码成功，等待确认
+    /// - `status=5`: 不支持扫码登录
     pub async fn check_qrcode(&self) -> Result<i32> {
         let url = "https://mp.weixin.qq.com/cgi-bin/scanloginqrcode?action=ask&token=&lang=zh_CN&f=json&ajax=1";
         let bytes = self.client.get(url).send().await?.bytes().await?;
@@ -89,7 +91,7 @@ impl Session {
             .bytes()
             .await?;
 
-        println!("登录响应: {}", String::from_utf8_lossy(&bytes));
+        // println!("登录响应: {}", String::from_utf8_lossy(&bytes));
 
         #[derive(Deserialize)]
         struct I {
@@ -102,7 +104,7 @@ impl Session {
             .split("token=")
             .nth(1)
             .and_then(|s| s.split('&').next())
-            .ok_or_else(|| Error::Custom("登录重定向 URL 中缺少 token".to_string()))?;
+            .ok_or_else(|| Error::Custom("Missing token in redirect URL".to_string()))?;
         self.set_token(token);
         Ok(())
     }
