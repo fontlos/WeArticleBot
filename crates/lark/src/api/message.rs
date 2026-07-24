@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::error::Result;
 use crate::session::Session;
 
@@ -61,7 +63,7 @@ impl Session {
 
         Response::check(&bytes)?;
 
-        println!("Send message response: {}", String::from_utf8_lossy(&bytes));
+        debug!("Send message response: {}", String::from_utf8_lossy(&bytes));
         Ok(())
     }
 }

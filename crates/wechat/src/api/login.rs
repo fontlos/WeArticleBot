@@ -91,7 +91,7 @@ impl Session {
             .bytes()
             .await?;
 
-        // println!("登录响应: {}", String::from_utf8_lossy(&bytes));
+        // debug!("Login response: {}", String::from_utf8_lossy(&bytes));
 
         #[derive(Deserialize)]
         struct I {

@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use log::debug;
 
 use crate::error::Result;
 use crate::session::Session;
@@ -42,9 +43,9 @@ impl Session {
             ("ajax", "1"),
         ];
         let res = self.client.get(url).query(&query).send().await?;
-        println!("Url: {}", url);
+        debug!("Url: {}", url);
         let text = res.text().await?;
-        println!("List response: {}", text);
+        debug!("List response: {}", text);
         Ok(())
     }
 }

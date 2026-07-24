@@ -1,3 +1,4 @@
+use log::debug;
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 
@@ -24,7 +25,7 @@ impl Session {
         let req = self.client.post(url).multipart(form);
 
         let bytes = self.request(req).await?;
-        println!("Upload image response: {}", String::from_utf8_lossy(&bytes));
+        debug!("Upload image response: {}", String::from_utf8_lossy(&bytes));
 
         let res: UploadImageResponse = Response::parse(&bytes)?;
         Ok(res.image_key)
