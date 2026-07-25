@@ -9,19 +9,19 @@ static WECHAT: OnceLock<wechat::Session> = OnceLock::new();
 
 /// 初始化全局上下文, 并尝试恢复上次的会话状态
 pub fn init() {
+    // 初始化飞书会话
     let app_id = env::var("LARK_APP_ID").expect("APP_ID not set");
     let app_secret = env::var("LARK_APP_SECRET").expect("APP_SECRET not set");
+    let lark = lark::Session::new(&app_id, &app_secret);
+    assert!(LARK.set(lark).is_ok(), "lark already initialized");
 
+    // 初始化微信会话
     let cookie = std::fs::File::open("cookies.json").expect("failed to open cookies.json");
     let buffer = std::io::BufReader::new(cookie);
-
-    let lark = lark::Session::new(&app_id, &app_secret);
     let wechat = wechat::Session::load(buffer).expect("failed to load wechat session");
-
     // 临时设置 token, 方便测试
-    // wechat.set_token("724245888");
-
-    assert!(LARK.set(lark).is_ok(), "lark already initialized");
+    // let wechat_token = env::var("WECHAT_TOKEN").unwrap();
+    // wechat.set_token(&wechat_token);
     assert!(WECHAT.set(wechat).is_ok(), "wechat already initialized");
 }
 
