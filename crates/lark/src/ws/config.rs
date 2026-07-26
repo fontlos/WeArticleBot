@@ -29,16 +29,16 @@ pub struct WsEndpoint {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WsClientConfig {
-    /// 心跳间隔, 单位秒
+    /// 心跳间隔, 单位秒, 默认 90
     #[serde(rename = "PingInterval")]
     pub ping: i32,
-    /// 重连次数, <=0 视为无限重试
+    /// 重连次数, <=0 视为无限重试, 默认 -1
     #[serde(rename = "ReconnectCount")]
     pub reconnect_count: i32,
-    /// 重连基础间隔, 单位秒
+    /// 重连基础间隔, 单位秒, 默认 90
     #[serde(rename = "ReconnectInterval")]
     pub reconnect_interval: i32,
-    /// 重连随机抖动, 单位秒(预留)
+    /// 重连随机抖动, 单位秒(预留), 默认 25
     #[serde(rename = "ReconnectNonce")]
     pub reconnect_nonce: i32,
 }

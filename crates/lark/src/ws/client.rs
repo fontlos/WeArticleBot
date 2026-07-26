@@ -58,7 +58,8 @@ impl WebSocketClient {
         let (resp_tx, mut resp_rx) = mpsc::unbounded_channel::<Message>();
 
         // Websocket 发送循环: 心跳 / 响应 Event / 关闭连接
-        let ping_interval = Duration::from_secs(endpoint.config.ping as u64);
+        // 心跳间隔, 默认 90, 防御服务端返回 0 导致 interval(0) panic
+        let ping_interval = Duration::from_secs(endpoint.config.ping.max(1) as u64);
         let mut interval = tokio::time::interval(ping_interval);
         let send_handle = tokio::spawn(async move {
             loop {
@@ -110,17 +111,25 @@ impl WebSocketClient {
                                 // 异步事件循环, 发送处理事件
                                 let event = Bytes::from(payload);
                                 let _ = event_tx.send(event);
-                                // 发送响应
+                                // 发送响应(ack): 收帧即回 200, 与 handler 处理脱钩
+                                // 配合分发器 event_id 去重保证不重复处理
+                                // TODO: 如果以后需要"处理成功才 ack", 需把响应移到处理完成后
                                 frame.response(200);
                                 let msg = Message::Binary(frame.encode_to_vec().into());
                                 let _ = resp_tx.send(msg);
                             }
                         }
                     }
+                    // 服务器主动发来的 Ping, 需要回 Pong 保持连接健康
+                    // 目前从未观察到飞书主动发起 Ping, 这里仅作防御
+                    Message::Ping(payload) => {
+                        let _ = resp_tx.send(Message::Pong(payload));
+                    }
                     // 这里就是对 Ping 帧的回复, Ping 帧为空, 这里也为空
                     Message::Pong(_) => {
                         debug!("Websocket Pong frame received");
                     }
+                    // 配合上面发送的 Close 帧, 收到回显 Close 帧自然关闭
                     Message::Close(_) => {
                         debug!("WebSocket Close frame received");
                         break;
@@ -204,6 +213,10 @@ impl WebSocketClient {
             tokio::select! {
                 event = self.recv() => match event {
                     Some(event) => {
+                        // 目前小场景, 每事件 spawn 足够
+                        // 预留: 并发上限可用 Semaphore 限流
+                        // 优雅停机等待 in-flight 可用 JoinSet
+                        // 严格有序 + 天然背压可改为串行 await handler
                         tokio::spawn(handler(event));
                     }
                     None => {
