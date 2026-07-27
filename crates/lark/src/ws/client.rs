@@ -1,9 +1,9 @@
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
-use log::{debug, error};
+use log::{debug, error, warn};
 use prost::Message as ProstMessage;
 use tokio::sync::{mpsc, watch};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
 
@@ -14,6 +14,9 @@ use crate::error::Result;
 
 use super::config::{ws_endpoint, WsEndpoint};
 use super::proto::Frame;
+
+/// 停机时等待 in-flight 处理任务的超时时间
+const HANDLER_DRAIN_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// 事件循环退出原因
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +53,12 @@ impl WebSocketClient {
         let (ws_stream, _) = ws_connect(&endpoint.url, Some(ws_config), false).await?;
         let (mut ws_write, mut ws_read) = ws_stream.split();
         // 停机信号通道
+        // 停机流程:
+        // 1. 调用 stop_graceful() 发送关闭信号, 关闭事件通道, 让上层 run 函数循环自然推出, 获取 send_handle, recv_handle 并等待最后的停机命令执行
+        // 2. send_handle 通过 ws_write 发送 Close 帧, 关闭 ws 连接并退出
+        // 3. recv_handle 通过 ws_read 接收 Close 帧并退出
+        // 4. 等待 send_handle, recv_handle 退出, 超时则强制终止
+        // 5. 等待后台任务退出, 超时则强制终止
         let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
 
         // 事件通道, 用于向外面发送响应事件, 让外部处理事件 JSON
@@ -183,7 +192,7 @@ impl WebSocketClient {
         };
 
         // 三秒后如果还没成功, 则强制终止异步线程, 防止 Close 帧丢失导致的僵尸线程
-        match tokio::time::timeout(Duration::from_secs(3), shutdown).await {
+        match tokio::time::timeout(HANDLER_DRAIN_TIMEOUT, shutdown).await {
             Ok(_) => {}
             Err(_) => {
                 if let Some(handle) = self.send_handle.take() {
@@ -209,17 +218,17 @@ impl WebSocketClient {
         Fut: Future<Output = ()> + Send + 'static,
     {
         tokio::pin!(shutdown);
+        let mut tasks = JoinSet::new();
         loop {
             tokio::select! {
                 event = self.recv() => match event {
                     Some(event) => {
-                        // 目前小场景, 每事件 spawn 足够
-                        // 预留: 并发上限可用 Semaphore 限流
-                        // 优雅停机等待 in-flight 可用 JoinSet
-                        // 严格有序 + 天然背压可改为串行 await handler
-                        tokio::spawn(handler(event));
+                        // 每事件一个任务, 由 JoinSet 统一管理
+                        // 如需并发上限, 可在 spawn 前用 Semaphore 限流
+                        tasks.spawn(handler(event));
                     }
                     None => {
+                        // TODO: 潜在的与停机函数循环调用
                         // 事件通道已关闭: 连接断开/出错
                         debug!("Event channel closed, connection lost");
                         self.stop_graceful().await;
@@ -228,9 +237,32 @@ impl WebSocketClient {
                 },
                 _ = &mut shutdown => {
                     debug!("Shutdown signal received");
+                    // 停止接收新事件并关闭连接
                     self.stop_graceful().await;
+                    // 等待 in-flight 处理完成, 避免打断正在回复的消息
+                    drain_tasks(&mut tasks).await;
                     return StopReason::Shutdown;
                 }
+            }
+        }
+    }
+}
+
+/// 等待所有 in-flight 处理任务完成, 超时则终止剩余任务
+async fn drain_tasks(tasks: &mut JoinSet<()>) {
+    let deadline = tokio::time::sleep(HANDLER_DRAIN_TIMEOUT);
+    tokio::pin!(deadline);
+    loop {
+        tokio::select! {
+            joined = tasks.join_next() => {
+                if joined.is_none() {
+                    return; // 全部完成
+                }
+            }
+            _ = &mut deadline => {
+                warn!("Timeout draining in-flight handlers, aborting remaining");
+                tasks.abort_all();
+                return;
             }
         }
     }
