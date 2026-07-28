@@ -2,8 +2,9 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, warn};
 use prost::Message as ProstMessage;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 use tokio::task::{JoinHandle, JoinSet};
+use tokio_util::sync::CancellationToken;
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
 
@@ -29,7 +30,7 @@ pub enum StopReason {
 
 pub struct WebSocketClient {
     event_rx: mpsc::UnboundedReceiver<Bytes>,
-    shutdown_tx: watch::Sender<bool>,
+    shutdown: CancellationToken,
     send_handle: Option<JoinHandle<()>>,
     recv_handle: Option<JoinHandle<()>>,
 }
@@ -52,14 +53,15 @@ impl WebSocketClient {
         // Websocket 的状态响应基本没用, 丢弃
         let (ws_stream, _) = ws_connect(&endpoint.url, Some(ws_config), false).await?;
         let (mut ws_write, mut ws_read) = ws_stream.split();
-        // 停机信号通道
+        // 内部停机信号
         // 停机流程:
-        // 1. 调用 stop_graceful() 发送关闭信号, 关闭事件通道, 让上层 run 函数循环自然推出, 获取 send_handle, recv_handle 并等待最后的停机命令执行
+        // 1. stop_graceful() cancel 内部 token, 关闭事件通道, 获取 send_handle, recv_handle 并挂起
         // 2. send_handle 通过 ws_write 发送 Close 帧, 关闭 ws 连接并退出
         // 3. recv_handle 通过 ws_read 接收 Close 帧并退出
         // 4. 等待 send_handle, recv_handle 退出, 超时则强制终止
         // 5. 等待后台任务退出, 超时则强制终止
-        let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
+        let shutdown = CancellationToken::new();
+        let send_shutdown = shutdown.clone();
 
         // 事件通道, 用于向外面发送响应事件, 让外部处理事件 JSON
         let (event_tx, event_rx) = mpsc::unbounded_channel::<Bytes>();
@@ -82,17 +84,15 @@ impl WebSocketClient {
                         let _ = ws_write.send(msg).await;
                     }
                     // 发送关闭帧
-                    _ = shutdown_rx.changed() => {
-                        if *shutdown_rx.borrow() {
-                            debug!("Sending Close frame to WebSocket server");
-                            // 发送 Close 帧, 通过服务器回显 Close 帧将让下面的异步线程自然关闭
-                            let msg = Message::Close(None);
-                            let _ = ws_write.send(msg).await;
-                            // 关闭连接
-                            let _ = ws_write.close().await;
-                            debug!("WebSocket send loop exited");
-                            break;
-                        }
+                    _ = send_shutdown.cancelled() => {
+                        debug!("Sending Close frame to WebSocket server");
+                        // 发送 Close 帧, 通过服务器回显 Close 帧将让下面的异步线程自然关闭
+                        let msg = Message::Close(None);
+                        let _ = ws_write.send(msg).await;
+                        // 关闭连接
+                        let _ = ws_write.close().await;
+                        debug!("WebSocket send loop exited");
+                        break;
                     }
                 }
             }
@@ -151,7 +151,7 @@ impl WebSocketClient {
 
         Ok(Self {
             event_rx,
-            shutdown_tx,
+            shutdown,
             send_handle: Some(send_handle),
             recv_handle: Some(recv_handle),
         })
@@ -177,8 +177,8 @@ impl WebSocketClient {
     }
 
     pub async fn stop_graceful(&mut self) {
-        // 发送关闭信号给后台任务
-        let _ = self.shutdown_tx.send(true);
+        // 发送内部停机信号
+        self.shutdown.cancel();
         // 关闭事件通道, 让上层循环退出
         self.event_rx.close();
 
@@ -228,8 +228,11 @@ impl WebSocketClient {
                         tasks.spawn(handler(event));
                     }
                     None => {
-                        // TODO: 潜在的与停机函数循环调用
-                        // 事件通道已关闭: 连接断开/出错
+                        // 事件通道已关闭, 来源可能是:
+                        // 1. 连接断开/出错: recv 任务退出, sender 被 drop, 应重连
+                        // 2. 主动停机: 外部调用 stop_graceful 关闭了通道, 应视为 Shutdown
+                        // TODO: 当前无法区分, 一律按 ConnectionLost 处理
+                        // 目前 stop_graceful 仅由本函数调用, 无实际影响
                         debug!("Event channel closed, connection lost");
                         self.stop_graceful().await;
                         return StopReason::ConnectionLost;
