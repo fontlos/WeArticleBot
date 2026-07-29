@@ -18,6 +18,8 @@ use super::proto::Frame;
 
 /// 停机时等待 in-flight 处理任务的超时时间
 const HANDLER_DRAIN_TIMEOUT: Duration = Duration::from_secs(3);
+/// 事件通道容量: 满时 recv 循环暂停, 形成背压而非丢弃
+const EVENT_CHANNEL_CAPACITY: usize = 1024;
 
 /// 事件循环退出原因
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +31,7 @@ pub enum StopReason {
 }
 
 pub struct WebSocketClient {
-    event_rx: mpsc::UnboundedReceiver<Bytes>,
+    event_rx: mpsc::Receiver<Bytes>,
     shutdown: CancellationToken,
     send_handle: Option<JoinHandle<()>>,
     recv_handle: Option<JoinHandle<()>>,
@@ -64,8 +66,10 @@ impl WebSocketClient {
         let send_shutdown = shutdown.clone();
 
         // 事件通道, 用于向外面发送响应事件, 让外部处理事件 JSON
-        let (event_tx, event_rx) = mpsc::unbounded_channel::<Bytes>();
+        // 有界: 满时 send().await 挂起 recv 循环, 停止读 socket 形成天然背压
+        let (event_tx, event_rx) = mpsc::channel(EVENT_CHANNEL_CAPACITY);
         // 响应事件通道, 用于发送响应帧, 通知服务器事件已收到
+        // 响应帧是取走了 payload 的原始帧, 足够小不会形成压力, 在内部是用无界通道即可
         let (resp_tx, mut resp_rx) = mpsc::unbounded_channel::<Message>();
 
         // Websocket 发送循环: 心跳 / 响应 Event / 关闭连接
@@ -118,8 +122,9 @@ impl WebSocketClient {
                             }
                             if let Some(payload) = frame.payload.take() {
                                 // 异步事件循环, 发送处理事件
+                                // 通道满时挂起等待, 形成背压
                                 let event = Bytes::from(payload);
-                                let _ = event_tx.send(event);
+                                let _ = event_tx.send(event).await;
                                 // 发送响应(ack): 收帧即回 200, 与 handler 处理脱钩
                                 // 配合分发器 event_id 去重保证不重复处理
                                 // TODO: 如果以后需要"处理成功才 ack", 需把响应移到处理完成后
@@ -224,7 +229,7 @@ impl WebSocketClient {
                 event = self.recv() => match event {
                     Some(event) => {
                         // 每事件一个任务, 由 JoinSet 统一管理
-                        // 如需并发上限, 可在 spawn 前用 Semaphore 限流
+                        // TODO: 高并发存在资源耗尽压力, 可在 spawn 前用 Semaphore 限流
                         tasks.spawn(handler(event));
                     }
                     None => {
