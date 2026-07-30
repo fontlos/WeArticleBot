@@ -2,13 +2,14 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, warn};
 use prost::Message as ProstMessage;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Semaphore};
 use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
 
 use std::future::Future;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::error::Result;
@@ -20,6 +21,8 @@ use super::proto::Frame;
 const HANDLER_DRAIN_TIMEOUT: Duration = Duration::from_secs(3);
 /// 事件通道容量: 满时 recv 循环暂停, 形成背压而非丢弃
 const EVENT_CHANNEL_CAPACITY: usize = 1024;
+/// 同时处理的 handler 任务上限
+const HANDLER_CONCURRENCY: usize = 16;
 
 /// 事件循环退出原因
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -224,13 +227,20 @@ impl WebSocketClient {
     {
         tokio::pin!(shutdown);
         let mut tasks = JoinSet::new();
+        // 并发上限: 许可耗尽时本分支挂起, 停机分支不受影响
+        let semaphore = Arc::new(Semaphore::new(HANDLER_CONCURRENCY));
         loop {
             tokio::select! {
                 event = self.recv() => match event {
                     Some(event) => {
                         // 每事件一个任务, 由 JoinSet 统一管理
-                        // TODO: 高并发存在资源耗尽压力, 可在 spawn 前用 Semaphore 限流
-                        tasks.spawn(handler(event));
+                        // 先获取许可再 spawn, 并发任务数有上界
+                        let permit = semaphore.clone().acquire_owned().await;
+                        let fut = handler(event);
+                        tasks.spawn(async move {
+                            let _permit = permit;
+                            fut.await;
+                        });
                     }
                     None => {
                         // 事件通道已关闭, 来源可能是:
