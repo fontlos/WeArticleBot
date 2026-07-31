@@ -4,6 +4,7 @@ use log::{debug, error, warn};
 use prost::Message as ProstMessage;
 use tokio::sync::{mpsc, Semaphore};
 use tokio::task::{JoinHandle, JoinSet};
+use tokio::time::MissedTickBehavior;
 use tokio_util::sync::CancellationToken;
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
@@ -79,6 +80,10 @@ impl WebSocketClient {
         // 心跳间隔, 默认 90, 防御服务端返回 0 导致 interval(0) panic
         let ping_interval = Duration::from_secs(endpoint.config.ping.max(1) as u64);
         let mut interval = tokio::time::interval(ping_interval);
+        // 避免卡顿重发导致的心跳风暴
+        interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        // 首次跳过, 建立连接后不需要立刻就确认状态
+        interval.tick().await;
         let send_handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
