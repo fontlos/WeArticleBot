@@ -2,12 +2,12 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, warn};
 use prost::Message as ProstMessage;
-use tokio::sync::{mpsc, Semaphore};
+use tokio::sync::{Semaphore, mpsc};
 use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::MissedTickBehavior;
-use tokio_util::sync::CancellationToken;
 use tokio_tungstenite::connect_async_with_config as ws_connect;
 use tokio_tungstenite::tungstenite::protocol::{Message, WebSocketConfig};
+use tokio_util::sync::CancellationToken;
 
 use std::future::Future;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use crate::error::Result;
 
-use super::config::{ws_endpoint, WsEndpoint};
+use super::config::{WsEndpoint, ws_endpoint};
 use super::proto::Frame;
 
 /// 停机时等待 in-flight 处理任务的超时时间

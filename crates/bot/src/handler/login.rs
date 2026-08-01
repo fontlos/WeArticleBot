@@ -40,7 +40,7 @@ pub async fn scan_login(chat_id: &str) {
                 let token = wechat.token();
                 debug!("Login successful, token: {}", token);
                 break;
-            },
+            }
             2 | 3 => {
                 info!("QR code expired, please refresh.");
                 let msg = Message::to_chat(chat_id).text("二维码已失效, 请重新获取登录");

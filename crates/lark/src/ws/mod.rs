@@ -2,4 +2,4 @@ mod client;
 mod config;
 mod proto;
 
-pub use client::{WebSocketClient, StopReason};
+pub use client::{StopReason, WebSocketClient};
