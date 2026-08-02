@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use prost::Message as ProstMessage;
 use tokio::sync::{Semaphore, mpsc};
 use tokio::task::{JoinHandle, JoinSet};
@@ -122,6 +122,7 @@ impl WebSocketClient {
                 };
                 match msg {
                     Message::Binary(data) => {
+                        let frame_len = data.len();
                         if let Ok(mut frame) = Frame::decode(data) {
                             // 1 是数据帧, 其他帧暂时不管
                             if frame.method != 1 {
@@ -140,6 +141,9 @@ impl WebSocketClient {
                                 let msg = Message::Binary(frame.encode_to_vec().into());
                                 let _ = resp_tx.send(msg);
                             }
+                        } else {
+                            // 坏帧: 协议不匹配或数据损坏
+                            warn!("Failed to decode WebSocket frame ({frame_len} bytes)");
                         }
                     }
                     // 服务器主动发来的 Ping, 需要回 Pong 保持连接健康
@@ -161,6 +165,8 @@ impl WebSocketClient {
             }
             debug!("WebSocket receive loop exited");
         });
+
+        info!("WebSocket connected to {}", endpoint.url);
 
         Ok(Self {
             event_rx,
