@@ -91,13 +91,11 @@ impl Session {
             .bytes()
             .await?;
 
-        // debug!("Login response: {}", String::from_utf8_lossy(&bytes));
-
         #[derive(Deserialize)]
         struct I {
             redirect_url: String,
         }
-        let res: I = Res::parse(&bytes).unwrap();
+        let res: I = Res::parse(&bytes)?;
         // 第一步定位 token=, 第二步寻找&或直接匹配到末尾, 找不到要返回错误
         let token = res
             .redirect_url
