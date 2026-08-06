@@ -2,10 +2,83 @@
 
 use serde::Deserialize;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::session::Session;
 
-use super::data::BaseRes;
+use super::data::Res;
+
+/// appmsgpublish 原始响应, 双层 JSON 字符串
+#[derive(Debug, Deserialize)]
+struct ListResponse {
+    #[serde(deserialize_with = "deserialize_publish_page")]
+    publish_page: PublishPage,
+}
+
+// 将 publish_page 的 JSON 字符串解析为 PublishPage,
+// 空字符串(错误响应时)容忍为空列表,
+// 这样 base_resp 的 ret != 0 错误能优先透出, 而不是被 JSON 解析错误掩盖
+fn deserialize_publish_page<'de, D>(
+    deserializer: D,
+) -> std::result::Result<PublishPage, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s.is_empty() {
+        return Ok(PublishPage {
+            total_count: 0,
+            publish_list: vec![],
+        });
+    }
+    serde_json::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+// publish_page 解析后的结构
+#[derive(Debug, Deserialize)]
+struct PublishPage {
+    total_count: usize,
+    publish_list: Vec<PublishListItem>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PublishListItem {
+    // 可能为空字符串(未发布的占位)或缺失, 统一过滤为 None
+    #[serde(default, deserialize_with = "deserialize_publish_info")]
+    publish_info: Option<PublishInfo>,
+}
+
+// 将 publish_info 的 JSON 字符串解析为 PublishInfo, 空字符串视为 None
+fn deserialize_publish_info<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<PublishInfo>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s.is_empty() {
+        Ok(None)
+    } else {
+        serde_json::from_str(&s)
+            .map(Some)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+// publish_info 解析后的结构
+#[derive(Debug, Deserialize)]
+struct PublishInfo {
+    appmsgex: Vec<Article>,
+}
+
+/// 文章列表结果
+#[derive(Debug)]
+pub struct ArticleList {
+    pub articles: Vec<Article>,
+    /// 文章总数
+    pub total: usize,
+    /// 当前页没有文章即为加载完毕
+    pub completed: bool,
+}
 
 /// 单篇公众号文章
 #[derive(Debug, Deserialize)]
@@ -34,40 +107,21 @@ pub struct Article {
     pub update_time: i64,
 }
 
-/// 文章列表结果
-#[derive(Debug)]
-pub struct ArticleList {
-    pub articles: Vec<Article>,
-    /// 文章总数(服务端返回)
-    pub total: usize,
-    /// 当前页没有文章即为加载完毕
-    pub completed: bool,
-}
-
-/// appmsgpublish 外层响应: publish_page 是 JSON 字符串, 需要二次解析
-#[derive(Debug, Deserialize)]
-struct AppMsgPublishResponse {
-    base_resp: BaseRes,
-    publish_page: String,
-}
-
-/// publish_page 解析后的结构
-#[derive(Debug, Deserialize)]
-struct PublishPage {
-    total_count: usize,
-    publish_list: Vec<PublishListItem>,
-}
-
-#[derive(Debug, Deserialize)]
-struct PublishListItem {
-    /// 可能为空字符串(未发布的占位), 需要过滤
-    publish_info: Option<String>,
-}
-
-/// publish_info 解析后的结构
-#[derive(Debug, Deserialize)]
-struct PublishInfo {
-    appmsgex: Vec<Article>,
+/// 从解析后的响应构建列表结果
+fn build_list(resp: ListResponse) -> ArticleList {
+    let articles: Vec<Article> = resp
+        .publish_page
+        .publish_list
+        .into_iter()
+        .filter_map(|item| item.publish_info)
+        .flat_map(|info| info.appmsgex)
+        .collect();
+    let completed = articles.is_empty();
+    ArticleList {
+        articles,
+        total: resp.publish_page.total_count,
+        completed,
+    }
 }
 
 /// 每页文章数
@@ -115,38 +169,8 @@ impl Session {
             .bytes()
             .await?;
 
-        parse_response(&bytes)
+        Ok(build_list(Res::parse(&bytes)?))
     }
-}
-
-/// 解析响应(双层 JSON 字符串)
-fn parse_response(bytes: &[u8]) -> Result<ArticleList> {
-    let resp: AppMsgPublishResponse = serde_json::from_slice(bytes)?;
-    if resp.base_resp.ret != 0 {
-        return Err(Error::Custom(format!(
-            "API error: {}",
-            resp.base_resp.err_msg
-        )));
-    }
-
-    // 第一层: publish_page(字符串) -> PublishPage
-    let publish_page: PublishPage = serde_json::from_str(&resp.publish_page)?;
-
-    // 第二层: publish_info(字符串) -> PublishInfo -> appmsgex
-    let mut articles = Vec::new();
-    for item in publish_page.publish_list {
-        if let Some(info) = item.publish_info {
-            if let Ok(info) = serde_json::from_str::<PublishInfo>(&info) {
-                articles.extend(info.appmsgex);
-            }
-        }
-    }
-
-    Ok(ArticleList {
-        completed: articles.is_empty(),
-        total: publish_page.total_count,
-        articles,
-    })
 }
 
 #[cfg(test)]
@@ -190,14 +214,18 @@ mod tests {
 
     #[test]
     fn parse_double_json_list() {
-        let list = parse_response(sample_response().as_bytes()).unwrap();
+        let resp: ListResponse = Res::parse(sample_response().as_bytes()).unwrap();
+        let list = build_list(resp);
         assert_eq!(list.total, 1);
         assert!(!list.completed);
         assert_eq!(list.articles.len(), 1);
         let article = &list.articles[0];
         assert_eq!(article.title, "测试文章");
         assert_eq!(article.author_name, "测试作者");
-        assert_eq!(article.link, "https://mp.weixin.qq.com/s?__biz=test&mid=1&idx=1&sn=abc");
+        assert_eq!(
+            article.link,
+            "https://mp.weixin.qq.com/s?__biz=test&mid=1&idx=1&sn=abc"
+        );
         assert_eq!(article.appmsgid, 123456789);
     }
 
@@ -215,19 +243,35 @@ mod tests {
             "base_resp": { "ret": 0, "err_msg": "ok" },
             "publish_page": publish_page,
         });
-        let list = parse_response(resp.to_string().as_bytes()).unwrap();
+        let resp: ListResponse = Res::parse(resp.to_string().as_bytes()).unwrap();
+        let list = build_list(resp);
         assert!(list.articles.is_empty());
         assert!(list.completed);
         assert_eq!(list.total, 2);
     }
 
     #[test]
-    fn parse_api_error() {
+    fn parse_api_error_with_empty_publish_page() {
+        // 错误响应时 publish_page 可能为空字符串, 应透出 base_resp 的错误
         let resp = serde_json::json!({
             "base_resp": { "ret": 200003, "err_msg": "session expired" },
             "publish_page": "",
         });
-        let err = parse_response(resp.to_string().as_bytes()).unwrap_err();
+        let err = Res::<ListResponse>::parse(resp.to_string().as_bytes()).unwrap_err();
         assert!(err.to_string().contains("session expired"));
+    }
+
+    #[test]
+    fn parse_empty_publish_page_ok() {
+        // ret=0 但 publish_page 为空: 容忍为空列表
+        let resp = serde_json::json!({
+            "base_resp": { "ret": 0, "err_msg": "ok" },
+            "publish_page": "",
+        });
+        let resp: ListResponse = Res::parse(resp.to_string().as_bytes()).unwrap();
+        let list = build_list(resp);
+        assert!(list.articles.is_empty());
+        assert!(list.completed);
+        assert_eq!(list.total, 0);
     }
 }
