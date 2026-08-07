@@ -1,5 +1,6 @@
 //! 公众号文章列表接口
 
+use bytes::Bytes;
 use serde::Deserialize;
 
 use crate::error::Result;
@@ -170,6 +171,12 @@ impl Session {
             .await?;
 
         Ok(build_list(Res::parse(&bytes)?))
+    }
+
+    /// 抓取文章页面原始 HTML
+    pub async fn fetch_article(&self, link: &str) -> Result<Bytes> {
+        let bytes = self.client.get(link).send().await?.bytes().await?;
+        Ok(bytes)
     }
 }
 
