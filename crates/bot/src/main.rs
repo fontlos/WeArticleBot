@@ -1,6 +1,7 @@
 mod command;
 mod context;
 mod handler;
+mod llm;
 mod logs;
 
 use tokio_util::sync::CancellationToken;
@@ -11,7 +12,7 @@ async fn main() {
     dotenvy::dotenv().ok();
     // 初始化日志
     logs::init();
-    // 初始化全局上下文 (Lark 和 WeChat 会话)
+    // 初始化全局上下文 (Lark, WeChat 和 LLM 会话)
     context::init();
 
     // 停机信号
