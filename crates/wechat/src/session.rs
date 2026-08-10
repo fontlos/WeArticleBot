@@ -7,8 +7,6 @@ use reqwest_cookie_store::CookieStoreMutex;
 use std::io::{BufRead, Write};
 use std::sync::Arc;
 
-use crate::error::Result;
-
 const UA: &str = "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 WAE/1.0";
 
 fn default_headers() -> HeaderMap {
@@ -56,7 +54,7 @@ impl Session {
 
     /// 仅用于测试
     #[allow(dead_code)]
-    pub fn load<R: BufRead>(reader: R) -> Result<Self> {
+    pub fn load<R: BufRead>(reader: R) -> crate::Result<Self> {
         let cookie_store = CookieStore::load_all(reader, |s| serde_json::from_str(s))?;
         let cookie = Arc::new(CookieStoreMutex::new(cookie_store));
         let client = client(cookie.clone());
@@ -70,7 +68,7 @@ impl Session {
 
     /// 仅用于测试
     #[allow(dead_code)]
-    pub fn save<W: Write>(&self, writer: &mut W) -> Result<()> {
+    pub fn save<W: Write>(&self, writer: &mut W) -> crate::Result<()> {
         let cookie_store = self.cookie.lock().unwrap();
         cookie_store.save_incl_expired_and_nonpersistent(writer, serde_json::to_string)?;
         Ok(())

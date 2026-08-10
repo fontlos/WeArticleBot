@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::error::{Error, Result};
+use crate::error::Error;
 
 #[derive(Debug, Deserialize)]
 pub struct Res<T> {
@@ -10,7 +10,7 @@ pub struct Res<T> {
 }
 
 impl<'de, T: Deserialize<'de>> Res<T> {
-    pub fn parse(bytes: &'de [u8]) -> Result<T> {
+    pub fn parse(bytes: &'de [u8]) -> crate::Result<T> {
         let res: Res<T> = serde_json::from_slice(bytes)?;
         if res.base_resp.ret != 0 {
             return Err(Error::Custom(format!(

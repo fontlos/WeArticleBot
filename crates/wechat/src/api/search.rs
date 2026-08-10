@@ -2,7 +2,6 @@
 
 use serde::Deserialize;
 
-use crate::error::Result;
 use crate::session::Session;
 
 use super::data::Res;
@@ -37,7 +36,7 @@ const PAGE_SIZE: usize = 10;
 
 impl Session {
     /// 搜索公众号
-    pub async fn search(&self, key: &str, page: usize) -> Result<AccountList> {
+    pub async fn search(&self, key: &str, page: usize) -> crate::Result<AccountList> {
         let url = "https://mp.weixin.qq.com/cgi-bin/searchbiz";
         let token = &self.token.load();
         let begin = (page - 1) * PAGE_SIZE;

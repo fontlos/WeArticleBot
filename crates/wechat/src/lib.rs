@@ -4,4 +4,5 @@ mod session;
 mod utils;
 
 pub use api::*;
+pub use error::Result;
 pub use session::Session;

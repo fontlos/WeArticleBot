@@ -3,7 +3,6 @@
 use bytes::Bytes;
 use serde::Deserialize;
 
-use crate::error::Result;
 use crate::session::Session;
 
 use super::data::Res;
@@ -18,9 +17,7 @@ struct ListResponse {
 // 将 publish_page 的 JSON 字符串解析为 PublishPage,
 // 空字符串(错误响应时)容忍为空列表,
 // 这样 base_resp 的 ret != 0 错误能优先透出, 而不是被 JSON 解析错误掩盖
-fn deserialize_publish_page<'de, D>(
-    deserializer: D,
-) -> std::result::Result<PublishPage, D::Error>
+fn deserialize_publish_page<'de, D>(deserializer: D) -> Result<PublishPage, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -49,9 +46,7 @@ struct PublishListItem {
 }
 
 // 将 publish_info 的 JSON 字符串解析为 PublishInfo, 空字符串视为 None
-fn deserialize_publish_info<'de, D>(
-    deserializer: D,
-) -> std::result::Result<Option<PublishInfo>, D::Error>
+fn deserialize_publish_info<'de, D>(deserializer: D) -> Result<Option<PublishInfo>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -139,7 +134,7 @@ impl Session {
         fakeid: &str,
         page: usize,
         keyword: Option<&str>,
-    ) -> Result<ArticleList> {
+    ) -> crate::Result<ArticleList> {
         let url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish";
         let token = &self.token.load();
         let begin = (page - 1) * PAGE_SIZE;
@@ -174,7 +169,7 @@ impl Session {
     }
 
     /// 抓取文章页面原始 HTML
-    pub async fn fetch_article(&self, link: &str) -> Result<Bytes> {
+    pub async fn fetch_article(&self, link: &str) -> crate::Result<Bytes> {
         let bytes = self.client.get(link).send().await?.bytes().await?;
         Ok(bytes)
     }
