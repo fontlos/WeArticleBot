@@ -1,6 +1,5 @@
 use log::debug;
 
-use crate::error::Result;
 use crate::session::Session;
 
 use super::response::Response;
@@ -48,7 +47,7 @@ impl Message {
 }
 
 impl Session {
-    pub async fn send_message(&self, msg: Message) -> Result<()> {
+    pub async fn send_message(&self, msg: Message) -> crate::Result<()> {
         let url = "https://open.feishu.cn/open-apis/im/v1/messages";
         let query = [("receive_id_type", msg.receive_id_type)];
         let json = serde_json::json!({

@@ -7,7 +7,6 @@ use tokio_util::sync::CancellationToken;
 use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::error::Result;
 use crate::ws::{StopReason, WebSocketClient};
 
 #[derive(Debug)]
@@ -41,7 +40,7 @@ impl Session {
     }
 
     /// 建立长连接并运行事件循环
-    pub async fn run_ws<F, Fut>(&self, shutdown: CancellationToken, handler: F) -> Result<()>
+    pub async fn run_ws<F, Fut>(&self, shutdown: CancellationToken, handler: F) -> crate::Result<()>
     where
         F: Fn(Bytes) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,

@@ -2,7 +2,6 @@ use log::debug;
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 
-use crate::error::Result;
 use crate::session::Session;
 
 use super::response::Response;
@@ -13,7 +12,7 @@ struct UploadImageResponse {
 }
 
 impl Session {
-    pub async fn upload_image(&self, img: &[u8]) -> Result<String> {
+    pub async fn upload_image(&self, img: &[u8]) -> crate::Result<String> {
         let url = "https://open.feishu.cn/open-apis/im/v1/images";
         let form = Form::new().text("image_type", "message").part(
             "image",

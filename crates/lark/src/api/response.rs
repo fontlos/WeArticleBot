@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::error::{Error, Result};
+use crate::error::Error;
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
@@ -10,7 +10,7 @@ pub struct Response {
 
 impl Response {
     /// 检查响应
-    pub fn check(bytes: &[u8]) -> Result<()> {
+    pub fn check(bytes: &[u8]) -> crate::Result<()> {
         let res: Response = serde_json::from_slice(bytes)?;
         if res.code != 0 {
             return Err(Error::Custom(format!(
@@ -22,7 +22,7 @@ impl Response {
     }
 
     /// 解析响应
-    pub fn parse<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> Result<T> {
+    pub fn parse<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> crate::Result<T> {
         Self::check(bytes)?;
         #[derive(Deserialize)]
         struct Data<T> {

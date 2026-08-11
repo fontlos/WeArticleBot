@@ -5,5 +5,6 @@ mod session;
 mod utils;
 mod ws;
 
+pub use error::Result;
 pub use session::Session;
 pub use ws::WebSocketClient;

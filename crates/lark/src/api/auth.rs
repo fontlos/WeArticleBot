@@ -2,7 +2,7 @@ use bytes::Bytes;
 use reqwest::RequestBuilder;
 use serde::Deserialize;
 
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::session::Session;
 use crate::utils;
 
@@ -18,7 +18,7 @@ struct AccessToken {
 
 impl Session {
     /// 刷新 access token
-    async fn refresh_access_token(&self) -> Result<()> {
+    async fn refresh_access_token(&self) -> crate::Result<()> {
         let now = utils::timestamp()?;
         if now < self.expire() {
             return Ok(());
@@ -48,7 +48,7 @@ impl Session {
     }
 
     /// 统一处理请求, 自动刷新 token
-    pub async fn request(&self, req: RequestBuilder) -> Result<Bytes> {
+    pub async fn request(&self, req: RequestBuilder) -> crate::Result<Bytes> {
         self.refresh_access_token().await?;
         let bytes = req
             .bearer_auth(self.token.load().as_str())
