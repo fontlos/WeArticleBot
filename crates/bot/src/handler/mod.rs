@@ -43,20 +43,15 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
     let chat_id = msg_event.chat_id();
     let text = msg_event.text().unwrap_or_default();
 
-    match command::parse(&text) {
-        Ok(parsed) => match parsed.kind {
-            command::Kind::Help => help::reply(chat_id, &command::general_help()).await,
-            command::Kind::Info => info::fetch_profile(chat_id).await,
-            command::Kind::Login => login::scan_login(chat_id).await,
-            command::Kind::Search => search::search_official(chat_id, &parsed.args[0]).await,
+    match command::parse_cli(&text) {
+        Ok(cli) => match cli {
+            command::Cli::Info => info::fetch_profile(chat_id).await,
+            command::Cli::Login => login::scan_login(chat_id).await,
+            command::Cli::Search { keyword } => search::search_official(chat_id, &keyword).await,
         },
-        Err(command::Error::Unknown(name)) => {
-            warn!("Unknown command: {}", name);
-            help::reply(chat_id, &command::unknown_text(&name)).await;
-        }
-        Err(command::Error::InvalidArgs { spec, reason }) => {
-            warn!("Invalid command: {}", spec.name);
-            help::reply(chat_id, &command::invalid_text(spec, &reason)).await;
+        Err(err) => {
+            // warn!("Unknown command: {}", name);
+            help::reply(chat_id, &err.to_string()).await;
         }
     }
     Ok(())

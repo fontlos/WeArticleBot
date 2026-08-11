@@ -17,5 +17,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-util = { workspace = true, features = ["rt"] }
 
+clap = { version = "4.6.6", features = ["derive"] }
 dotenvy = "0.15.7"
 logforth = { version = "0.30.1", features = ["starter-log"] }
