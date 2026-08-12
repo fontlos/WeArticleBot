@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::session::Session;
 
-use super::response::Response;
+use super::response::Res;
 
 #[derive(Debug, Deserialize)]
 struct UploadImageResponse {
@@ -26,7 +26,7 @@ impl Session {
         let bytes = self.request(req).await?;
         debug!("Upload image response: {}", String::from_utf8_lossy(&bytes));
 
-        let res: UploadImageResponse = Response::parse(&bytes)?;
+        let res: UploadImageResponse = Res::parse(&bytes)?;
         Ok(res.image_key)
     }
 }

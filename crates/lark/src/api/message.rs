@@ -2,7 +2,7 @@ use log::debug;
 
 use crate::session::Session;
 
-use super::response::Response;
+use super::response::Res;
 
 #[derive(Clone, Debug, Default)]
 pub struct Message {
@@ -60,7 +60,7 @@ impl Session {
 
         let bytes = self.request(req).await?;
 
-        Response::check(&bytes)?;
+        Res::check(&bytes)?;
 
         debug!("Send message response: {}", String::from_utf8_lossy(&bytes));
         Ok(())

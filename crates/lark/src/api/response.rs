@@ -3,15 +3,15 @@ use serde::Deserialize;
 use crate::error::Error;
 
 #[derive(Debug, Deserialize)]
-pub struct Response {
+pub struct Res {
     pub code: i32,
     pub msg: String,
 }
 
-impl Response {
+impl Res {
     /// 检查响应
     pub fn check(bytes: &[u8]) -> crate::Result<()> {
-        let res: Response = serde_json::from_slice(bytes)?;
+        let res: Res = serde_json::from_slice(bytes)?;
         if res.code != 0 {
             return Err(Error::Custom(format!(
                 "Bad response: code {}, message: {}",
