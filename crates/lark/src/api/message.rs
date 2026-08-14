@@ -39,6 +39,12 @@ impl Message {
         self
     }
 
+    pub fn post(mut self, post: String) -> Self {
+        self.msg_type = "post";
+        self.content = post;
+        self
+    }
+
     pub fn image(mut self, image_key: &str) -> Self {
         self.msg_type = "image";
         self.content = serde_json::json!({ "image_key": image_key }).to_string();
