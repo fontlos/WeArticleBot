@@ -1,3 +1,4 @@
 //! 云文档 API
 
-mod drive;
+pub mod bitable;
+pub mod drive;
