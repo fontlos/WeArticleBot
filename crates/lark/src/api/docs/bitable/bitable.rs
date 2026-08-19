@@ -6,8 +6,8 @@ use crate::api::docs::drive::folder::FolderMeta;
 use crate::api::response::Res;
 
 #[derive(Debug, Deserialize)]
-struct BitableApp{
-    app: BitableMeta
+struct BitableApp {
+    app: BitableMeta,
 }
 
 #[derive(Debug, Deserialize)]
@@ -20,7 +20,11 @@ pub struct BitableMeta {
 }
 
 impl Session {
-    pub async fn create_bitable(&self, name: &str, folder: &FolderMeta) -> crate::Result<BitableMeta> {
+    pub async fn create_bitable(
+        &self,
+        name: &str,
+        folder: &FolderMeta,
+    ) -> crate::Result<BitableMeta> {
         let url = "https://open.feishu.cn/open-apis/bitable/v1/apps";
         let body = serde_json::json!({
             "name": name,
