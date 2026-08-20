@@ -1,4 +1,4 @@
-use lark::api::Message;
+use lark::api::im::message::Message;
 use log::{debug, info};
 
 use std::time::Duration;
