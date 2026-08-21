@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::Session;
 
 use crate::api::docs::drive::folder::FolderMeta;
-use crate::api::response::Res;
+use crate::api::Res;
 
 #[derive(Debug, Deserialize)]
 struct BitableApp {

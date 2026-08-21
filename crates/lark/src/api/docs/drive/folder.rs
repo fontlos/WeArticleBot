@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 
-use crate::api::response::Res;
+use crate::api::Res;
 use crate::session::Session;
 
 /// 文件夹元信息

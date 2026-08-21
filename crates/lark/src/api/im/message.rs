@@ -2,7 +2,7 @@ use log::debug;
 
 use crate::session::Session;
 
-use crate::api::response::Res;
+use crate::api::Res;
 
 #[derive(Clone, Debug, Default)]
 pub struct Message {
