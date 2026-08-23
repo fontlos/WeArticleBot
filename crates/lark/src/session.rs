@@ -5,18 +5,23 @@ use reqwest::Client;
 use tokio_util::sync::CancellationToken;
 
 use std::future::Future;
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ws::{StopReason, WebSocketClient};
 
+/// 核心类型标记
+pub struct Core;
+
 #[derive(Debug)]
-pub struct Session {
+pub struct Session<G = Core> {
     pub client: Client,
     pub app_id: String,
     pub app_secret: String,
     pub token: ArcSwap<String>,
     /// Token 有效时长, 最长 3 小时, 当剩余不到半小时时调用会刷新 token
     pub expire: AtomicU64,
+    _marker: PhantomData<G>,
 }
 
 impl Session {
@@ -27,6 +32,7 @@ impl Session {
             app_secret: app_secret.to_string(),
             token: ArcSwap::default(),
             expire: AtomicU64::new(0),
+            _marker: PhantomData,
         }
     }
 
