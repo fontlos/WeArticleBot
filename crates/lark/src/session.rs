@@ -80,3 +80,14 @@ impl Session {
         }
     }
 }
+
+impl <G> Session<G> {
+    /// Obtains a type-state view for the specified API group
+    #[inline]
+    pub const fn api<N>(&self) -> &Session<N> {
+        unsafe {
+            // Safety: PhantomData 不改变实际内存布局
+            &*(self as *const Session<G> as *const Session<N>)
+        }
+    }
+}
