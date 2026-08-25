@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ws::{StopReason, WebSocketClient};
 
-/// 核心类型标记
+/// 核心 API 分组标记
 pub struct Core;
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl Session {
     }
 }
 
-impl <G> Session<G> {
+impl<G> Session<G> {
     /// Obtains a type-state view for the specified API group
     #[inline]
     pub const fn api<N>(&self) -> &Session<N> {
