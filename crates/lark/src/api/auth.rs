@@ -1,10 +1,10 @@
-use bytes::Bytes;
-use reqwest::RequestBuilder;
 use serde::Deserialize;
 
 use crate::error::Error;
 use crate::session::Session;
 use crate::utils;
+
+use super::Auth;
 
 #[derive(Debug, Deserialize)]
 struct AccessToken {
@@ -16,11 +16,11 @@ struct AccessToken {
     expire: Option<u64>,
 }
 
-impl Session {
+impl Session<Auth> {
     /// 刷新 access token
-    async fn refresh_access_token(&self) -> crate::Result<()> {
+    pub(crate) async fn refresh_access_token(&self) -> crate::Result<()> {
         let now = utils::timestamp()?;
-        if now < self.expire() {
+        if now < self.core().expire() {
             return Ok(());
         }
         let url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal";
@@ -40,22 +40,10 @@ impl Session {
         match (res.token, res.expire) {
             (Some(token), Some(expire)) => {
                 // 有效时长最长 3 小时, 当剩余不到半小时时调用会刷新 token, 所以我们少算十分钟
-                self.set_token(token, expire - 600);
+                self.core().set_token(token, expire - 600);
             }
             _ => return Err(Error::Custom("Invalid access token response".into())),
         }
         Ok(())
-    }
-
-    /// 统一处理请求, 自动刷新 token
-    pub async fn request(&self, req: RequestBuilder) -> crate::Result<Bytes> {
-        self.refresh_access_token().await?;
-        let bytes = req
-            .bearer_auth(self.token.load().as_str())
-            .send()
-            .await?
-            .bytes()
-            .await?;
-        Ok(bytes)
     }
 }
