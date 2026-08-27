@@ -5,6 +5,8 @@ use crate::Session;
 use crate::api::Res;
 use crate::api::docs::drive::folder::FolderMeta;
 
+use super::super::Bitable;
+
 #[derive(Debug, Deserialize)]
 struct BitableApp {
     app: BitableMeta,
@@ -19,7 +21,7 @@ pub struct BitableMeta {
     pub url: String,
 }
 
-impl Session {
+impl Session<Bitable> {
     pub async fn create_bitable(
         &self,
         name: &str,
@@ -32,7 +34,7 @@ impl Session {
             "time_zone": "Asia/Macau",
         });
         let req = self.client.post(url).json(&body);
-        let bytes = self.request(req).await?;
+        let bytes = self.core().request(req).await?;
         let res: BitableApp = Res::parse(&bytes)?;
         Ok(res.app)
     }
