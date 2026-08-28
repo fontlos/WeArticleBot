@@ -17,4 +17,9 @@ impl Session<Docs> {
     pub fn bitable(&self) -> &Session<Bitable> {
         self.api()
     }
+
+    /// 切换云空间 API 分组实例
+    pub fn drive(&self) -> &Session<Drive> {
+        self.api()
+    }
 }

@@ -5,6 +5,8 @@ use serde::Deserialize;
 use crate::api::Res;
 use crate::session::Session;
 
+use super::super::Drive;
+
 /// 文件夹元信息
 #[derive(Debug, Deserialize)]
 pub struct FolderMeta {
@@ -13,7 +15,7 @@ pub struct FolderMeta {
     pub user_id: String,
 }
 
-impl Session {
+impl Session<Drive> {
     /// 获取根文件夹元信息
     ///
     /// 权限要求 (任选其一)
@@ -22,7 +24,7 @@ impl Session {
     pub async fn get_root_folder(&self) -> crate::Result<FolderMeta> {
         let url = "https://open.feishu.cn/open-apis/drive/explorer/v2/root_folder/meta";
         let req = self.client.get(url);
-        let bytes = self.request(req).await?;
+        let bytes = self.core().request(req).await?;
         let res: FolderMeta = Res::parse(&bytes)?;
         Ok(res)
     }
@@ -49,7 +51,7 @@ pub struct FileMeta {
     pub url: String,
 }
 
-impl Session {
+impl Session<Drive> {
     /// 获取根文件夹元信息
     ///
     /// 权限要求 (任选其一)
@@ -59,7 +61,7 @@ impl Session {
     pub async fn get_file_list(&self) -> crate::Result<FileList> {
         let url = "https://open.feishu.cn/open-apis/drive/v1/files";
         let req = self.client.get(url);
-        let bytes = self.request(req).await?;
+        let bytes = self.core().request(req).await?;
         let res: FileList = Res::parse(&bytes)?;
         Ok(res)
     }
