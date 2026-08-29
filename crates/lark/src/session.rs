@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use bytes::Bytes;
 use log::error;
-use reqwest::{Client, RequestBuilder};
+use reqwest::Client;
 use tokio_util::sync::CancellationToken;
 
 use std::future::Future;
@@ -43,18 +43,6 @@ impl Session {
     pub fn set_token(&self, token: String, expire: u64) {
         self.token.store(token.into());
         self.expire.store(expire, Ordering::Release);
-    }
-
-    /// 统一处理请求, 自动刷新 token
-    pub async fn request(&self, req: RequestBuilder) -> crate::Result<Bytes> {
-        self.auth().refresh_access_token().await?;
-        let bytes = req
-            .bearer_auth(self.token.load().as_str())
-            .send()
-            .await?
-            .bytes()
-            .await?;
-        Ok(bytes)
     }
 
     /// 建立长连接并运行事件循环

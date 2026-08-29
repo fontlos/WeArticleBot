@@ -24,7 +24,7 @@ impl Session<Drive> {
     pub async fn get_root_folder(&self) -> crate::Result<FolderMeta> {
         let url = "https://open.feishu.cn/open-apis/drive/explorer/v2/root_folder/meta";
         let req = self.client.get(url);
-        let bytes = self.core().request(req).await?;
+        let bytes = self.request(req).await?;
         let res: FolderMeta = Res::parse(&bytes)?;
         Ok(res)
     }
@@ -61,7 +61,7 @@ impl Session<Drive> {
     pub async fn get_file_list(&self) -> crate::Result<FileList> {
         let url = "https://open.feishu.cn/open-apis/drive/v1/files";
         let req = self.client.get(url);
-        let bytes = self.core().request(req).await?;
+        let bytes = self.request(req).await?;
         let res: FileList = Res::parse(&bytes)?;
         Ok(res)
     }

@@ -34,7 +34,7 @@ impl Session<Bitable> {
             "time_zone": "Asia/Macau",
         });
         let req = self.client.post(url).json(&body);
-        let bytes = self.core().request(req).await?;
+        let bytes = self.request(req).await?;
         let res: BitableApp = Res::parse(&bytes)?;
         Ok(res.app)
     }

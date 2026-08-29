@@ -1,3 +1,5 @@
+use bytes::Bytes;
+use reqwest::RequestBuilder;
 use serde::Deserialize;
 
 use crate::error::Error;
@@ -45,5 +47,19 @@ impl Session<Auth> {
             _ => return Err(Error::Custom("Invalid access token response".into())),
         }
         Ok(())
+    }
+}
+
+impl<G> Session<G> {
+    /// 辅助统一构造请求, 自动刷新 token
+    pub(crate) async fn request(&self, req: RequestBuilder) -> crate::Result<Bytes> {
+        self.api::<Auth>().refresh_access_token().await?;
+        let bytes = req
+            .bearer_auth(self.token.load().as_str())
+            .send()
+            .await?
+            .bytes()
+            .await?;
+        Ok(bytes)
     }
 }
