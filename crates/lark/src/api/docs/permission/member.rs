@@ -22,7 +22,10 @@ impl Session<Permission> {
     /// 获取成员信息
     /// TODO: 暂时只给 OpenID 全部权限
     pub async fn add_member(&self, file: &FileMeta, open_id: &str) -> crate::Result<Member> {
-        let url = format!("https://open.feishu.cn/open-apis/drive/v1/permissions/{}/members", file.token);
+        let url = format!(
+            "https://open.feishu.cn/open-apis/drive/v1/permissions/{}/members",
+            file.token
+        );
         let query = [("type", file.r#type.as_str())];
         let json = serde_json::json!({
             "member_type": "openid",
