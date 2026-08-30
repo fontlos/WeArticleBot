@@ -11,10 +11,27 @@ use super::super::Drive;
 /// 移动文件夹属于异步任务, 使用 ID 查询执行情况
 #[derive(Debug, Deserialize)]
 struct Task {
-    pub task_id: String,
+    task_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Status {
+    // success
+    status: String,
 }
 
 impl Session<Drive> {
+    /// 检查异步任务状态
+    pub async fn check_task(&self, task_id: &str) -> crate::Result<bool> {
+        let url = "https://open.feishu.cn/open-apis/drive/v1/files/task_check";
+        let query = [("task_id", task_id)];
+        let req = self.client.get(url).query(&query);
+        let bytes = self.request(req).await?;
+        let res: Status = Res::parse(&bytes)?;
+        Ok(res.status == "success")
+    }
+
+    /// 移动文件到指定文件夹
     pub async fn move_file(&self, from: &FileMeta, to: &str) -> crate::Result<String> {
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}/move",
@@ -30,6 +47,7 @@ impl Session<Drive> {
         Ok(res.task_id)
     }
 
+    /// 删除文件
     pub async fn delete_file(&self, file: &FileMeta) -> crate::Result<String> {
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}",
