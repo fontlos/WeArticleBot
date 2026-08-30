@@ -29,4 +29,18 @@ impl Session<Drive> {
         let res: Task = Res::parse(&bytes)?;
         Ok(res.task_id)
     }
+
+    pub async fn delete_file(&self, file: &FileMeta) -> crate::Result<String> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/drive/v1/files/{}",
+            file.token
+        );
+        let query = [
+            ("type", file.r#type.as_str()),
+        ];
+        let req = self.client.delete(&url).query(&query);
+        let bytes = self.request(req).await?;
+        let res: Task = Res::parse(&bytes)?;
+        Ok(res.task_id)
+    }
 }
