@@ -10,12 +10,17 @@ use crate::api::docs::drive::folder::FileMeta;
 use super::super::Permission;
 
 #[derive(Debug, Deserialize)]
+struct MemberWrap {
+    member: Member,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Member {
     pub member_type: String,
     pub member_id: String,
     pub perm: String,
     pub perm_type: String,
-    pub r#type: String,
+    pub r#type: Option<String>,
 }
 
 impl Session<Permission> {
@@ -34,7 +39,7 @@ impl Session<Permission> {
         });
         let req = self.client.post(&url).query(&query).json(&json);
         let bytes = self.request(req).await?;
-        let res: Member = Res::parse(&bytes)?;
-        Ok(res)
+        let res: MemberWrap = Res::parse(&bytes)?;
+        Ok(res.member)
     }
 }
