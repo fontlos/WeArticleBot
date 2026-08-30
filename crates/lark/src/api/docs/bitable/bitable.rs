@@ -4,6 +4,7 @@ use crate::Session;
 
 use crate::api::Res;
 use crate::api::docs::drive::folder::Folder;
+use crate::error::Error;
 
 use super::super::Bitable;
 
@@ -30,9 +31,7 @@ impl Session<Bitable> {
         F: Folder,
     {
         if !folder.is_folder() {
-            return Err(crate::error::Error::Custom(
-                "`folder` must be a folder".to_string(),
-            ));
+            return Err(Error::Custom("`folder` must be a folder".to_string()));
         }
         let url = "https://open.feishu.cn/open-apis/bitable/v1/apps";
         let body = serde_json::json!({

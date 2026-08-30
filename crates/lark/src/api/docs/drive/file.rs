@@ -40,9 +40,7 @@ impl Session<Drive> {
         F: Folder,
     {
         if !to.is_folder() {
-            return Err(Error::Custom(
-                "`to` must be a folder".to_string(),
-            ));
+            return Err(Error::Custom("`to` must be a folder".to_string()));
         }
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}/move",
