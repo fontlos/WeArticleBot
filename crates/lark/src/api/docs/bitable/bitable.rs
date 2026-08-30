@@ -7,11 +7,13 @@ use crate::api::docs::drive::folder::FolderMeta;
 
 use super::super::Bitable;
 
+/// Bitable 应用元信息包装
 #[derive(Debug, Deserialize)]
 struct BitableApp {
     app: BitableMeta,
 }
 
+/// Bitable 应用元信息
 #[derive(Debug, Deserialize)]
 pub struct BitableMeta {
     pub app_token: String,
@@ -22,6 +24,8 @@ pub struct BitableMeta {
 }
 
 impl Session<Bitable> {
+    // TODO: 目前只适用于根文件夹
+    /// 创建 Bitable 应用
     pub async fn create_bitable(
         &self,
         name: &str,

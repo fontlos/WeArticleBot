@@ -7,6 +7,7 @@ use crate::session::Session;
 
 use super::super::Drive;
 
+// TODO: 这应该只适用于根文件夹
 /// 文件夹元信息
 #[derive(Debug, Deserialize)]
 pub struct FolderMeta {

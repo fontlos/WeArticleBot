@@ -17,6 +17,7 @@ pub struct Message {
 }
 
 impl Message {
+    /// 发送至群聊
     pub fn to_chat(id: &str) -> Self {
         Self {
             receive_id: id.to_string(),
@@ -25,6 +26,7 @@ impl Message {
         }
     }
 
+    /// 发送至用户
     pub fn to_user(id: &str) -> Self {
         Self {
             receive_id: id.to_string(),
@@ -33,18 +35,21 @@ impl Message {
         }
     }
 
+    /// 填入文本
     pub fn text(mut self, text: &str) -> Self {
         self.msg_type = "text";
         self.content = serde_json::json!({ "text": text }).to_string();
         self
     }
 
+    /// 填入富文本
     pub fn post(mut self, post: String) -> Self {
         self.msg_type = "post";
         self.content = post;
         self
     }
 
+    /// 填入图片
     pub fn image(mut self, image_key: &str) -> Self {
         self.msg_type = "image";
         self.content = serde_json::json!({ "image_key": image_key }).to_string();
