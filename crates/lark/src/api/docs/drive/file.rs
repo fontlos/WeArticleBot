@@ -32,6 +32,8 @@ impl Session<Drive> {
     }
 
     /// 移动文件到指定文件夹
+    ///
+    /// 需要 RootFolderMeta.token 或者 type 为 folder 的 FileMeta.token
     pub async fn move_file(&self, from: &FileMeta, to: &str) -> crate::Result<String> {
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}/move",

@@ -7,10 +7,9 @@ use crate::session::Session;
 
 use super::super::Drive;
 
-// TODO: 这应该只适用于根文件夹
 /// 文件夹元信息
 #[derive(Debug, Deserialize)]
-pub struct FolderMeta {
+pub struct RootFolderMeta {
     pub token: String,
     pub id: String,
     pub user_id: String,
@@ -22,11 +21,11 @@ impl Session<Drive> {
     /// 权限要求 (任选其一)
     /// - `drive:drive`
     /// - `drive:drive.metadata:readonly`
-    pub async fn get_root_folder(&self) -> crate::Result<FolderMeta> {
+    pub async fn get_root_folder(&self) -> crate::Result<RootFolderMeta> {
         let url = "https://open.feishu.cn/open-apis/drive/explorer/v2/root_folder/meta";
         let req = self.client.get(url);
         let bytes = self.request(req).await?;
-        let res: FolderMeta = Res::parse(&bytes)?;
+        let res: RootFolderMeta = Res::parse(&bytes)?;
         Ok(res)
     }
 }

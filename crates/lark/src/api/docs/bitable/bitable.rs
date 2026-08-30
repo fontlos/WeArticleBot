@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::Session;
 
 use crate::api::Res;
-use crate::api::docs::drive::folder::FolderMeta;
+use crate::api::docs::drive::folder::RootFolderMeta;
 
 use super::super::Bitable;
 
@@ -29,7 +29,7 @@ impl Session<Bitable> {
     pub async fn create_bitable(
         &self,
         name: &str,
-        folder: &FolderMeta,
+        folder: &RootFolderMeta,
     ) -> crate::Result<BitableMeta> {
         let url = "https://open.feishu.cn/open-apis/bitable/v1/apps";
         let body = serde_json::json!({
