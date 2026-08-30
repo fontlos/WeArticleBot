@@ -15,12 +15,12 @@ pub struct Core;
 
 #[derive(Debug)]
 pub struct Session<G = Core> {
-    pub client: Client,
-    pub app_id: String,
-    pub app_secret: String,
-    pub token: ArcSwap<String>,
+    pub(crate) client: Client,
+    pub(crate) app_id: String,
+    pub(crate) app_secret: String,
+    pub(crate) token: ArcSwap<String>,
     /// Token 有效时长, 最长 3 小时, 当剩余不到半小时时调用会刷新 token
-    pub expire: AtomicU64,
+    pub(crate) expire: AtomicU64,
     _marker: PhantomData<G>,
 }
 
