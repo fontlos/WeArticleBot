@@ -1,6 +1,7 @@
 mod help;
 mod info;
 mod login;
+mod query;
 mod search;
 
 use bytes::Bytes;
@@ -9,7 +10,7 @@ use log::{debug, error, warn};
 
 use std::sync::OnceLock;
 
-use crate::command;
+use crate::command::{self, Query, QuerySub};
 
 // 处理飞书事件
 pub async fn handle(event: Bytes) {
@@ -44,10 +45,15 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
     let text = msg_event.text().unwrap_or_default();
 
     match command::parse_cli(&text) {
-        Ok(cli) => match cli {
-            command::Cli::Info => info::fetch_profile(chat_id).await,
-            command::Cli::Login => login::scan_login(chat_id).await,
-            command::Cli::Search { keyword } => search::search_official(chat_id, &keyword).await,
+        Ok(cli) => match cli.command {
+            command::Commands::Info => info::fetch_profile(chat_id).await,
+            command::Commands::Login => login::scan_login(chat_id).await,
+            command::Commands::Search { keyword } => {
+                search::search_official(chat_id, &keyword).await
+            }
+            command::Commands::Query(Query { command }) => match command {
+                QuerySub::UserId => query::query_user_id(&msg_event).await,
+            },
         },
         Err(err) => {
             // warn!("Unknown command: {}", name);

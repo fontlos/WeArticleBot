@@ -1,9 +1,15 @@
 //! 字符串命令解析
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-pub enum Cli {
+pub struct Cli {
+    #[clap(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
     /// 获取微信登录二维码
     Login,
     /// 获取用户信息
@@ -13,6 +19,18 @@ pub enum Cli {
         /// 搜索关键词
         keyword: String,
     },
+    Query(Query),
+}
+
+#[derive(Debug, Parser)]
+pub struct Query {
+    #[clap(subcommand)]
+    pub command: QuerySub,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum QuerySub {
+    UserId,
 }
 
 pub fn parse_cli(text: &str) -> Result<Cli, clap::Error> {
