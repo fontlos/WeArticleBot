@@ -17,9 +17,11 @@
 - `im:message.p2p_msg:readonly`: 读取用户发给机器人的单聊消息
 - `im:message:send_as_bot`: 以应用的身份发消息
 - `im:resource`: 图片上传权限
+- `bitable:app`: 创建查看编辑管理多维表格
+- `drive:drive`: 创建查看编辑管理云空间
 
 **事件与回调 - 事件配置**
 
 - 订阅方式: 选择 **长连接**
 - 已添加事件
-  - im.message.receive_v1: 接收消息, 群聊@与P2P聊天
+  - `im.message.receive_v1`: 接收消息, 群聊@与P2P聊天
