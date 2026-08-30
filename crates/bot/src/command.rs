@@ -14,6 +14,8 @@ pub enum Commands {
     Login,
     /// 获取用户信息
     Info,
+    /// 初始化多维表格与权限
+    Init,
     /// 搜索公众号
     Search {
         /// 搜索关键词

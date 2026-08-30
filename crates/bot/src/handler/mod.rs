@@ -1,5 +1,6 @@
 mod help;
 mod info;
+mod init;
 mod login;
 mod query;
 mod search;
@@ -46,8 +47,9 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
 
     match command::parse_cli(&text) {
         Ok(cli) => match cli.command {
-            command::Commands::Info => info::fetch_profile(chat_id).await,
             command::Commands::Login => login::scan_login(chat_id).await,
+            command::Commands::Info => info::fetch_profile(chat_id).await,
+            command::Commands::Init => init::init_bitable(&msg_event).await,
             command::Commands::Search { keyword } => {
                 search::search_official(chat_id, &keyword).await
             }
