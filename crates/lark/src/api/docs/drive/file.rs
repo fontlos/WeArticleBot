@@ -9,10 +9,10 @@ use crate::session::Session;
 
 use super::super::Drive;
 
-/// 移动文件夹属于异步任务, 使用 ID 查询执行情况
+/// 操作 **文件夹** 属于异步任务, 使用 ID 查询执行情况
 #[derive(Debug, Deserialize)]
 struct Task {
-    task_id: String,
+    task_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,7 +35,7 @@ impl Session<Drive> {
     /// 移动文件到指定文件夹
     ///
     /// 需要 RootFolderMeta 或者 type 为 folder 的 FileMeta
-    pub async fn move_file<F>(&self, from: &FileMeta, to: &F) -> crate::Result<String>
+    pub async fn move_file<F>(&self, from: &FileMeta, to: &F) -> crate::Result<Option<String>>
     where
         F: Folder,
     {
@@ -57,7 +57,7 @@ impl Session<Drive> {
     }
 
     /// 删除文件
-    pub async fn delete_file(&self, file: &FileMeta) -> crate::Result<String> {
+    pub async fn delete_file(&self, file: &FileMeta) -> crate::Result<Option<String>> {
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}",
             file.token
