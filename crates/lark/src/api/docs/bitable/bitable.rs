@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::Session;
 
 use crate::api::Res;
-use crate::api::docs::drive::folder::RootFolderMeta;
+use crate::api::docs::drive::folder::Folder;
 
 use super::super::Bitable;
 
@@ -24,17 +24,20 @@ pub struct BitableMeta {
 }
 
 impl Session<Bitable> {
-    // TODO: 目前只适用于根文件夹
     /// 创建 Bitable 应用
-    pub async fn create_bitable(
-        &self,
-        name: &str,
-        folder: &RootFolderMeta,
-    ) -> crate::Result<BitableMeta> {
+    pub async fn create_bitable<F>(&self, name: &str, folder: &F) -> crate::Result<BitableMeta>
+    where
+        F: Folder,
+    {
+        if !folder.is_folder() {
+            return Err(crate::error::Error::Custom(
+                "`folder` must be a folder".to_string(),
+            ));
+        }
         let url = "https://open.feishu.cn/open-apis/bitable/v1/apps";
         let body = serde_json::json!({
             "name": name,
-            "folder_token": &folder.token,
+            "folder_token": &folder.token(),
             "time_zone": "Asia/Macau",
         });
         let req = self.client.post(url).json(&body);

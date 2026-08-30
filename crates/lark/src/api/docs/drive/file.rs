@@ -3,7 +3,8 @@
 use serde::Deserialize;
 
 use crate::api::Res;
-use crate::api::docs::drive::folder::FileMeta;
+use crate::api::docs::drive::folder::{FileMeta, Folder};
+use crate::error::Error;
 use crate::session::Session;
 
 use super::super::Drive;
@@ -33,15 +34,23 @@ impl Session<Drive> {
 
     /// 移动文件到指定文件夹
     ///
-    /// 需要 RootFolderMeta.token 或者 type 为 folder 的 FileMeta.token
-    pub async fn move_file(&self, from: &FileMeta, to: &str) -> crate::Result<String> {
+    /// 需要 RootFolderMeta 或者 type 为 folder 的 FileMeta
+    pub async fn move_file<F>(&self, from: &FileMeta, to: &F) -> crate::Result<String>
+    where
+        F: Folder,
+    {
+        if !to.is_folder() {
+            return Err(Error::Custom(
+                "`to` must be a folder".to_string(),
+            ));
+        }
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/files/{}/move",
             from.token
         );
         let body = serde_json::json!({
             "type": from.r#type,
-            "folder_token": to,
+            "folder_token": to.token(),
         });
         let req = self.client.post(&url).json(&body);
         let bytes = self.request(req).await?;
@@ -55,9 +64,7 @@ impl Session<Drive> {
             "https://open.feishu.cn/open-apis/drive/v1/files/{}",
             file.token
         );
-        let query = [
-            ("type", file.r#type.as_str()),
-        ];
+        let query = [("type", file.r#type.as_str())];
         let req = self.client.delete(&url).query(&query);
         let bytes = self.request(req).await?;
         let res: Task = Res::parse(&bytes)?;

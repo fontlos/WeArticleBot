@@ -66,3 +66,27 @@ impl Session<Drive> {
         Ok(res)
     }
 }
+
+/// 文件夹 trait
+pub trait Folder {
+    fn token(&self) -> &str;
+    // 根文件夹一定是文件夹, 其他文件元信息需要检查 type
+    fn is_folder(&self) -> bool {
+        true
+    }
+}
+
+impl Folder for RootFolderMeta {
+    fn token(&self) -> &str {
+        &self.token
+    }
+}
+
+impl Folder for FileMeta {
+    fn token(&self) -> &str {
+        &self.token
+    }
+    fn is_folder(&self) -> bool {
+        self.r#type == "folder"
+    }
+}
