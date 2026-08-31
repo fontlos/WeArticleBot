@@ -1,3 +1,7 @@
+mod html;
+
+pub use html::extract_article_section;
+
 use rand::RngExt;
 
 use std::time::{SystemTime, UNIX_EPOCH};

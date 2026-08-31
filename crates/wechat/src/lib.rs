@@ -1,7 +1,7 @@
 mod api;
 mod error;
 mod session;
-mod utils;
+pub mod utils;
 
 pub use api::*;
 pub use error::Result;
