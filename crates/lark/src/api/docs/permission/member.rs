@@ -5,7 +5,6 @@ use serde::Deserialize;
 use crate::Session;
 
 use crate::api::Res;
-use crate::api::docs::drive::folder::FileMeta;
 
 use super::super::Permission;
 
@@ -24,14 +23,20 @@ pub struct Member {
 }
 
 impl Session<Permission> {
-    /// 获取成员信息
+    /// 添加成员权限
     /// TODO: 暂时只给 OpenID 全部权限
-    pub async fn add_member(&self, file: &FileMeta, open_id: &str) -> crate::Result<Member> {
+    /// doc_type: 文档类型, 如 "bitable"/"docx"/"sheet"
+    pub async fn add_member(
+        &self,
+        token: &str,
+        doc_type: &str,
+        open_id: &str,
+    ) -> crate::Result<Member> {
         let url = format!(
             "https://open.feishu.cn/open-apis/drive/v1/permissions/{}/members",
-            file.token
+            token
         );
-        let query = [("type", file.r#type.as_str())];
+        let query = [("type", doc_type)];
         let json = serde_json::json!({
             "member_type": "openid",
             "member_id": open_id,
