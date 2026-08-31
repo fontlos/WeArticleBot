@@ -1,7 +1,7 @@
 mod html;
 
+pub use html::article_to_markdown;
 pub use html::extract_article_section;
-pub use html::simplify_article_section;
 
 use rand::RngExt;
 

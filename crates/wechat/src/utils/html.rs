@@ -45,7 +45,9 @@ fn find_section_end(hay: &[u8], start: usize) -> Option<usize> {
     let mut depth = 0usize;
     let mut i = start;
     while i < hay.len() {
-        let Some(lt) = find_sub(&hay[i..], b"<") else { return None };
+        let Some(lt) = find_sub(&hay[i..], b"<") else {
+            return None;
+        };
         let lt = i + lt;
 
         // 跳过注释
@@ -115,21 +117,41 @@ fn find_tag_end(hay: &[u8], lt: usize) -> Option<usize> {
     None
 }
 
-/// 保留的标签白名单: 标题 / 段落 / 行内 / 图片 / 代码
-const KEEP_TAGS: &[&[u8]] = &[
-    b"h1", b"h2", b"h3", b"h4", b"h5", b"h6", b"p", b"span", b"img", b"code", b"pre",
-];
 
-/// 简化文章正文: 只保留白名单标签, 其余标签标记丢弃但文本保留(解包);
-/// img 按规则过滤(gif 丢弃), data-src 提升为 src; br 转为换行; script/style 连内容删除
-pub fn simplify_article_section(bytes: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(bytes.len() / 4);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_nested_sections() {
+        let html = r#"<div id="js_content"><section style="x"><p>开头</p><section><p>内层</p></section><p>结尾</p></section><div>其他</div></div>"#;
+        let sec = extract_article_section(html.as_bytes()).unwrap();
+        let sec = std::str::from_utf8(sec).unwrap();
+        assert!(sec.starts_with("<section"));
+        assert!(sec.ends_with("</section>"));
+        assert!(sec.contains("开头"));
+        assert!(sec.contains("内层"));
+        assert!(sec.contains("结尾"));
+        assert!(!sec.contains("其他"));
+    }
+}
+
+/// 文章 section -> 简化 Markdown
+///
+/// 白名单标签(h1-h6/p/span/img/code/pre), 其余标签解包(保留文本);
+/// img 按规则过滤(gif 丢弃, data-src 提取)
+pub fn article_to_markdown(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() / 3);
+    let mut in_pre = false;
     let mut i = 0;
+
     while i < bytes.len() {
         if bytes[i] != b'<' {
-            // 普通文本: 拷贝到下一个 '<'
             let rel = find_sub(&bytes[i..], b"<").unwrap_or(bytes.len() - i);
-            out.extend_from_slice(&bytes[i..i + rel]);
+            out.push_str(&decode_entities(&String::from_utf8_lossy(
+                &bytes[i..i + rel],
+            )));
             i += rel;
             continue;
         }
@@ -145,7 +167,7 @@ pub fn simplify_article_section(bytes: &[u8]) -> Vec<u8> {
         }
 
         let Some(gt) = find_tag_end(bytes, i) else {
-            out.extend_from_slice(&bytes[i..]);
+            out.push_str(&decode_entities(&String::from_utf8_lossy(&bytes[i..])));
             break;
         };
         let tag = &bytes[i..=gt];
@@ -153,8 +175,20 @@ pub fn simplify_article_section(bytes: &[u8]) -> Vec<u8> {
         // 结束标签
         if tag.get(1) == Some(&b'/') {
             let name = tag_name(&tag[2..]);
-            if is_keep_tag(name) {
-                out.extend_from_slice(tag);
+            if name.eq_ignore_ascii_case(b"pre") {
+                if !out.ends_with('\n') {
+                    out.push('\n');
+                }
+                out.push_str("```\n");
+                in_pre = false;
+            } else if name.eq_ignore_ascii_case(b"code") {
+                if !in_pre {
+                    out.push('`');
+                }
+            } else if is_heading(name) {
+                out.push_str("\n\n");
+            } else if name.eq_ignore_ascii_case(b"p") {
+                out.push_str("\n\n");
             }
             i = gt + 1;
             continue;
@@ -162,7 +196,7 @@ pub fn simplify_article_section(bytes: &[u8]) -> Vec<u8> {
 
         let name = tag_name(&tag[1..]);
 
-        // script/style: 连内容一起删除
+        // script/style: 连内容删除
         if name.eq_ignore_ascii_case(b"script") || name.eq_ignore_ascii_case(b"style") {
             if let Some(close) = find_close_tag(&bytes[i..], name) {
                 i += close;
@@ -174,44 +208,55 @@ pub fn simplify_article_section(bytes: &[u8]) -> Vec<u8> {
 
         // br -> 换行
         if name.eq_ignore_ascii_case(b"br") {
-            out.push(b'\n');
+            out.push('\n');
             i = gt + 1;
             continue;
         }
 
-        // img: 应用图片规则
+        // img -> ![alt](url)
         if name.eq_ignore_ascii_case(b"img") {
-            if let Some(img) = simplify_img(tag) {
-                out.extend_from_slice(&img);
+            if let Some(img) = img_to_markdown(tag) {
+                out.push('\n');
+                out.push_str(&img);
+                out.push('\n');
             }
             i = gt + 1;
             continue;
         }
 
-        // 白名单标签原样保留, 其余解包(只删标签标记)
-        if is_keep_tag(name) {
-            out.extend_from_slice(tag);
+        // pre / code
+        if name.eq_ignore_ascii_case(b"pre") {
+            out.push_str("\n```\n");
+            in_pre = true;
+            i = gt + 1;
+            continue;
         }
+        if name.eq_ignore_ascii_case(b"code") {
+            // pre 内 code 由围栏承载, 不再标记
+            if !in_pre {
+                out.push('`');
+            }
+            i = gt + 1;
+            continue;
+        }
+
+        // 标题
+        if is_heading(name) {
+            let level = name[1] - b'0';
+            out.push('\n');
+            for _ in 0..level {
+                out.push('#');
+            }
+            out.push(' ');
+            i = gt + 1;
+            continue;
+        }
+
+        // 其余标签: 解包(只删标记, 保留文本)
         i = gt + 1;
     }
-    out
-}
 
-/// 图片规则: data-src 结尾是 wx_fmt=gif 则丢弃; 否则输出 <img src=url alt=alt>
-/// (data-src 优先, 无则用 src; 解决 mdka 不认 data-src 的问题)
-fn simplify_img(tag: &[u8]) -> Option<Vec<u8>> {
-    let url = attr_value(tag, b"data-src").or_else(|| attr_value(tag, b"src"))?;
-    if url.ends_with(b"wx_fmt=gif") {
-        return None;
-    }
-    let alt = attr_value(tag, b"alt").unwrap_or(b"");
-    let mut out = Vec::with_capacity(tag.len());
-    out.extend_from_slice(b"<img src=\"");
-    out.extend_from_slice(url);
-    out.extend_from_slice(b"\" alt=\"");
-    out.extend_from_slice(alt);
-    out.extend_from_slice(b"\">");
-    Some(out)
+    cleanup(out)
 }
 
 /// 提取标签名(到空白 / > / / 为止)
@@ -223,17 +268,16 @@ fn tag_name(bytes: &[u8]) -> &[u8] {
     &bytes[..n]
 }
 
-fn is_keep_tag(name: &[u8]) -> bool {
-    KEEP_TAGS.iter().any(|k| name.eq_ignore_ascii_case(k))
-}
-
 /// 读取标签内属性值(引号感知, 支持单双引号)
 fn attr_value<'a>(tag: &'a [u8], attr: &[u8]) -> Option<&'a [u8]> {
     let mut i = 0;
     while i + attr.len() <= tag.len() {
         if tag[i..].starts_with(attr) {
             let after = i + attr.len();
-            if matches!(tag.get(after), Some(&b'=') | Some(b' ') | Some(b'\t') | Some(b'\n')) {
+            if matches!(
+                tag.get(after),
+                Some(&b'=') | Some(b' ') | Some(b'\t') | Some(b'\n')
+            ) {
                 let mut j = after;
                 while j < tag.len() && tag[j].is_ascii_whitespace() {
                     j += 1;
@@ -274,74 +318,124 @@ fn find_close_tag(hay: &[u8], name: &[u8]) -> Option<usize> {
     None
 }
 
+fn is_heading(name: &[u8]) -> bool {
+    name.len() == 2 && name[0].eq_ignore_ascii_case(&b'h') && (b'1'..=b'6').contains(&name[1])
+}
+
+/// img -> markdown 图片; gif 丢弃; data-src 优先
+fn img_to_markdown(tag: &[u8]) -> Option<String> {
+    let url = attr_value(tag, b"data-src").or_else(|| attr_value(tag, b"src"))?;
+    if url.ends_with(b"wx_fmt=gif") {
+        return None;
+    }
+    let url = decode_entities(&String::from_utf8_lossy(url));
+    let alt = decode_entities(&String::from_utf8_lossy(
+        attr_value(tag, b"alt").unwrap_or(b""),
+    ));
+    Some(format!("![{alt}]({url})"))
+}
+
+/// 解码常见 HTML 实体(&amp; &lt; &gt; &quot; &apos; &nbsp; 及 &#NN; / &#xHH;)
+fn decode_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < s.len() {
+        let ch = s[i..].chars().next().unwrap();
+        if ch == '&' {
+            // 分号须在 12 字节内(字节迭代, 避免多字节字符边界问题)
+            let start = i + 1;
+            if let Some(rel) = s.as_bytes()[start..]
+                .iter()
+                .take(12)
+                .position(|&b| b == b';')
+            {
+                let name = &s[start..start + rel];
+                if let Some(decoded) = decode_entity_name(name) {
+                    out.push(decoded);
+                    i = start + rel + 1;
+                    continue;
+                }
+            }
+        }
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
+}
+
+fn decode_entity_name(name: &str) -> Option<char> {
+    match name {
+        "amp" => Some('&'),
+        "lt" => Some('<'),
+        "gt" => Some('>'),
+        "quot" => Some('"'),
+        "apos" | "#39" | "x27" => Some('\''),
+        "nbsp" | "#160" | "xa0" => Some(' '),
+        "ensp" | "#8194" | "emsp" | "#8195" => Some(' '),
+        "middot" | "#183" => Some('·'),
+        "times" => Some('×'),
+        "copy" => Some('©'),
+        "reg" => Some('®'),
+        _ => {
+            // 数字实体 &#NN; / &#xHH;
+            let Some(num) = name.strip_prefix('#') else {
+                return None;
+            };
+            let code = if let Some(hex) = num.strip_prefix('x').or_else(|| num.strip_prefix('X')) {
+                u32::from_str_radix(hex, 16).ok()
+            } else {
+                num.parse::<u32>().ok()
+            };
+            code.and_then(char::from_u32)
+        }
+    }
+}
+
+/// 行尾去空白, 压缩连续空行(代码块内保留)
+fn cleanup(raw: String) -> String {
+    let mut out_lines: Vec<String> = Vec::new();
+    let mut in_fence = false;
+    let mut prev_blank = false;
+
+    for line in raw.lines().map(str::trim_end) {
+        let t = line.trim();
+        if t.starts_with("```") {
+            in_fence = !in_fence;
+        }
+        if in_fence {
+            out_lines.push(line.to_string());
+            prev_blank = false;
+        } else if t.is_empty() {
+            if !prev_blank {
+                out_lines.push(String::new());
+            }
+            prev_blank = true;
+        } else {
+            out_lines.push(line.to_string());
+            prev_blank = false;
+        }
+    }
+
+    while out_lines.first().is_some_and(|l| l.trim().is_empty()) {
+        out_lines.remove(0);
+    }
+    while out_lines.last().is_some_and(|l| l.trim().is_empty()) {
+        out_lines.pop();
+    }
+    out_lines.join("\n")
+}
+
 #[cfg(test)]
-mod tests {
+mod markdown_tests {
     use super::*;
 
-    fn simplify_str(html: &str) -> String {
-        String::from_utf8_lossy(&simplify_article_section(html.as_bytes())).into_owned()
+    fn md(html: &str) -> String {
+        article_to_markdown(html.as_bytes())
     }
 
     #[test]
-    fn extract_nested_sections() {
-        let html = r#"<div id="js_content"><section style="x"><p>开头</p><section><p>内层</p></section><p>结尾</p></section><div>其他</div></div>"#;
-        let sec = extract_article_section(html.as_bytes()).unwrap();
-        let sec = std::str::from_utf8(sec).unwrap();
-        assert!(sec.starts_with("<section"));
-        assert!(sec.ends_with("</section>"));
-        assert!(sec.contains("开头"));
-        assert!(sec.contains("内层"));
-        assert!(sec.contains("结尾"));
-        assert!(!sec.contains("其他"));
-    }
-
-    #[test]
-    fn drop_gif_image() {
-        let html = r#"<p>a</p><img data-src="https://mmbiz.qpic.cn/a/1?wx_fmt=gif" alt="gif"><p>b</p>"#;
-        let out = simplify_str(html);
-        assert!(!out.contains("img"), "gif 图应被丢弃: {out}");
-        assert!(out.contains("a"));
-        assert!(out.contains("b"));
-    }
-
-    #[test]
-    fn keep_png_and_promote_data_src() {
-        let html = r#"<p>x</p><img data-src="https://mmbiz.qpic.cn/a/2?wx_fmt=png" src="empty.gif" alt="图">"#;
-        let out = simplify_str(html);
-        assert_eq!(
-            out,
-            r#"<p>x</p><img src="https://mmbiz.qpic.cn/a/2?wx_fmt=png" alt="图">"#
-        );
-    }
-
-    #[test]
-    fn unwrap_non_keep_tags_keep_text() {
-        let html = r#"<section><div><p>正文</p></div></section><ul><li>条目</li></ul>"#;
-        let out = simplify_str(html);
-        assert_eq!(out, "<p>正文</p>条目");
-    }
-
-    #[test]
-    fn br_to_newline() {
-        let html = r#"<p>a<br/>b</p>"#;
-        let out = simplify_str(html);
-        assert_eq!(out, "<p>a\nb</p>");
-    }
-
-    #[test]
-    fn drop_script_with_content() {
-        let html = r#"<p>a</p><script>var x = '<p>假的</p>';</script><p>b</p>"#;
-        let out = simplify_str(html);
-        assert_eq!(out, "<p>a</p><p>b</p>");
-    }
-
-    #[test]
-    fn keep_code_and_pre() {
-        let html = r#"<p>inline <code>let x</code></p><pre><code class="language-rust">fn main() {}</code></pre>"#;
-        let out = simplify_str(html);
-        assert_eq!(
-            out,
-            r#"<p>inline <code>let x</code></p><pre><code class="language-rust">fn main() {}</code></pre>"#
-        );
+    fn headings_and_inline_code() {
+        let out = md(r#"<h2>标题</h2><p>段落 <code>let x</code> 和文字</p>"#);
+        assert_eq!(out, "## 标题\n\n段落 `let x` 和文字");
     }
 }
