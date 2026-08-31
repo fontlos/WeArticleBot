@@ -31,19 +31,16 @@ pub struct AccountInfo {
     pub signature: String,
 }
 
-/// 每页数量
-const PAGE_SIZE: usize = 10;
-
 impl Session {
     /// 搜索公众号
-    pub async fn search(&self, key: &str, page: usize) -> crate::Result<AccountList> {
+    pub async fn search(&self, key: &str, size: usize, page: usize) -> crate::Result<AccountList> {
         let url = "https://mp.weixin.qq.com/cgi-bin/searchbiz";
         let token = &self.token.load();
-        let begin = (page - 1) * PAGE_SIZE;
+        let begin = (page - 1) * size;
         let query = [
             ("action", "search_biz"),
             ("begin", &begin.to_string()),
-            ("count", &PAGE_SIZE.to_string()),
+            ("count", &size.to_string()),
             ("query", key),
             ("token", token),
             ("lang", "zh_CN"),

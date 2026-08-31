@@ -120,33 +120,32 @@ fn build_list(resp: ListResponse) -> ArticleList {
     }
 }
 
-/// 每页文章数
-const PAGE_SIZE: usize = 20;
-
 impl Session {
     /// 获取公众号文章列表
     ///
     /// - fakeid: 公众号 ID
+    /// - size: 每页数量
     /// - page: 页码, 从 1 开始
     /// - keyword: Some(关键词) 文章搜索模式, None 普通列表模式
     pub async fn list_articles(
         &self,
-        fakeid: &str,
+        id: &str,
+        size: usize,
         page: usize,
-        keyword: Option<&str>,
+        key: Option<&str>,
     ) -> crate::Result<ArticleList> {
         let url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish";
         let token = &self.token.load();
-        let begin = (page - 1) * PAGE_SIZE;
-        let is_search = keyword.is_some();
+        let begin = (page - 1) * size;
+        let is_search = key.is_some();
 
         let query = [
             ("sub", if is_search { "search" } else { "list" }),
             ("search_field", if is_search { "7" } else { "null" }),
             ("begin", &begin.to_string()),
-            ("count", &PAGE_SIZE.to_string()),
-            ("query", keyword.unwrap_or("")),
-            ("fakeid", fakeid),
+            ("count", &size.to_string()),
+            ("query", key.unwrap_or("")),
+            ("fakeid", id),
             ("type", "101_1"),
             ("free_publish_type", "1"),
             ("sub_action", "list_ex"),
