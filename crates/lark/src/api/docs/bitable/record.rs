@@ -22,6 +22,11 @@ struct RecordWrap {
     record: Record,
 }
 
+#[derive(Deserialize)]
+struct RecordsWrap {
+    records: Vec<Record>,
+}
+
 impl Session<Bitable> {
     /// 新增单条记录
     pub async fn create_record(
@@ -40,5 +45,24 @@ impl Session<Bitable> {
 
         let res: RecordWrap = Res::parse(&bytes)?;
         Ok(res.record)
+    }
+
+    /// 批量新增记录 (单次最多 500 条)
+    pub async fn batch_create_records(
+        &self,
+        app_token: &str,
+        table_id: &str,
+        records: &[Value],
+    ) -> crate::Result<Vec<Record>> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/batch_create",
+            app_token, table_id
+        );
+        let body = json!({ "records": records });
+        let req = self.client.post(&url).json(&body);
+        let bytes = self.request(req).await?;
+
+        let res: RecordsWrap = Res::parse(&bytes)?;
+        Ok(res.records)
     }
 }
