@@ -29,4 +29,16 @@ impl Session<Bitable> {
         let res: TableRes = Res::parse(&bytes)?;
         Ok(res)
     }
+
+    /// 删除数据表
+    pub async fn delete_table(&self, app_token: &str, table_id: &str) -> crate::Result<()> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}",
+            app_token, table_id
+        );
+        let req = self.client.delete(&url);
+        let bytes = self.request(req).await?;
+        Res::check(&bytes)?;
+        Ok(())
+    }
 }
