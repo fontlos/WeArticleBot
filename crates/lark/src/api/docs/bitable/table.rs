@@ -16,13 +16,6 @@ pub struct TableRes {
     pub field_id_list: Option<Vec<String>>,
 }
 
-/// 新增字段响应
-#[derive(Debug, Deserialize)]
-pub struct FieldRes {
-    pub field_id: String,
-    pub field_name: String,
-}
-
 impl Session<Bitable> {
     /// 创建数据表
     /// TODO: 数据表结构过于复杂先手动构造 JSON 传入
@@ -47,26 +40,5 @@ impl Session<Bitable> {
         let bytes = self.request(req).await?;
         Res::check(&bytes)?;
         Ok(())
-    }
-
-    /// 新增字段
-    pub async fn create_field(
-        &self,
-        app_token: &str,
-        table_id: &str,
-        field: &Value,
-    ) -> crate::Result<FieldRes> {
-        let url = format!(
-            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/fields",
-            app_token, table_id
-        );
-        let req = self.client.post(&url).json(&field);
-        let bytes = self.request(req).await?;
-        #[derive(Deserialize)]
-        struct FieldWrap {
-            field: FieldRes,
-        }
-        let res: FieldWrap = Res::parse(&bytes)?;
-        Ok(res.field)
     }
 }
