@@ -165,14 +165,20 @@ pub async fn init_bitable(event: &MessageEvent) {
     lark.send_message(msg).await.unwrap();
 
     // 创建多维表格
-    let new_bitable = bitable.create_bitable("WeArticleTable", &root).await.unwrap();
+    let new_bitable = bitable
+        .create_bitable("WeArticleTable", &root)
+        .await
+        .unwrap();
     let app_token = &new_bitable.app_token;
 
     let msg = Message::to_chat(event.chat_id()).text("正在初始化数据表...");
     lark.send_message(msg).await.unwrap();
 
     // 按依赖顺序建表
-    let accounts = bitable.create_table(app_token, &accounts_table()).await.unwrap();
+    let accounts = bitable
+        .create_table(app_token, &accounts_table())
+        .await
+        .unwrap();
     let articles = bitable
         .create_table(app_token, &articles_table(&accounts.table_id))
         .await
@@ -190,13 +196,15 @@ pub async fn init_bitable(event: &MessageEvent) {
 
     let open_id = &event.sender.sender_id.open_id;
 
-    let msg = Message::to_chat(event.chat_id()).text(&format!(
-        "正在授予用户 {open_id} 多维表格管理权限..."
-    ));
+    let msg = Message::to_chat(event.chat_id())
+        .text(&format!("正在授予用户 {open_id} 多维表格管理权限..."));
     lark.send_message(msg).await.unwrap();
 
     // 授予用户编辑权限
-    let _member = permission.add_member(app_token, "bitable", open_id).await.unwrap();
+    let _member = permission
+        .add_member(app_token, "bitable", open_id)
+        .await
+        .unwrap();
 
     let msg = Message::to_chat(event.chat_id()).text(&format!("已完成: {}", new_bitable.url));
     lark.send_message(msg).await.unwrap();
@@ -213,11 +221,18 @@ mod tests {
         assert_eq!(accounts["table"]["name"], "公众号");
         let accounts_fields = accounts["table"]["fields"].as_array().unwrap();
         assert_eq!(accounts_fields.first().unwrap()["field_name"], "公众号名称");
-        for name in ["文章总数", "已同步文章数", "最后同步日期", "最后同步标题"] {
-            let f = accounts_fields.iter().find(|f| f["field_name"] == name).unwrap();
+        for name in ["文章总数", "已同步文章数", "最后同步日期", "最后同步标题"]
+        {
+            let f = accounts_fields
+                .iter()
+                .find(|f| f["field_name"] == name)
+                .unwrap();
             assert!(f["type"].as_i64().is_some(), "{name} 缺失");
         }
-        let total = accounts_fields.iter().find(|f| f["field_name"] == "文章总数").unwrap();
+        let total = accounts_fields
+            .iter()
+            .find(|f| f["field_name"] == "文章总数")
+            .unwrap();
         assert_eq!(total["type"].as_i64(), Some(2));
 
         // 表 2: 文章, 公众号关联内联在第 2 位
@@ -236,7 +251,10 @@ mod tests {
         let summaries = summaries_table("tbl_articles");
         assert_eq!(summaries["table"]["name"], "AI总结");
         let summaries_fields = summaries["table"]["fields"].as_array().unwrap();
-        assert_eq!(summaries_fields.first().unwrap()["field_name"], "一句话总结");
+        assert_eq!(
+            summaries_fields.first().unwrap()["field_name"],
+            "一句话总结"
+        );
         let link = &summaries_fields[1];
         assert_eq!(link["field_name"], "关联文章");
         assert_eq!(link["type"].as_i64(), Some(21));
@@ -244,7 +262,10 @@ mod tests {
         assert_eq!(link["property"]["back_field_name"], "AI总结");
         assert_eq!(link["property"]["multiple"], true);
         for name in ["核心要点", "关键数据", "结论与启示"] {
-            let f = summaries_fields.iter().find(|f| f["field_name"] == name).unwrap();
+            let f = summaries_fields
+                .iter()
+                .find(|f| f["field_name"] == name)
+                .unwrap();
             assert!(f["type"].as_i64().is_some(), "{name} 缺失");
         }
 
