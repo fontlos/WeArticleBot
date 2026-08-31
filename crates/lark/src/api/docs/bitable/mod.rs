@@ -2,4 +2,5 @@
 
 pub mod app;
 pub mod field;
+pub mod record;
 pub mod table;
