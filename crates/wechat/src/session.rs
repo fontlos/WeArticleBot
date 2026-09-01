@@ -7,7 +7,7 @@ use reqwest_cookie_store::CookieStoreMutex;
 use std::io::{BufRead, Write};
 use std::sync::Arc;
 
-const UA: &str = "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 WAE/1.0";
+const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0";
 
 fn default_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
