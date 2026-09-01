@@ -38,7 +38,9 @@ pub async fn scan_login(chat_id: &str) {
                 // 继续完成登录
                 wechat.login().await.unwrap();
                 let token = wechat.token();
-                debug!("Login successful, token: {}", token);
+                let msg = format!("用户 {} 登陆成功", token);
+                let msg = Message::to_chat(chat_id).text(&msg);
+                lark.send_message(msg).await.unwrap();
                 break;
             }
             2 | 3 => {
