@@ -33,16 +33,17 @@ pub async fn list_articles(chat_id: &str, fakeid: &str) {
     let msg = Message::to_chat(chat_id).text("正在获取公众号文章...");
     lark.send_message(msg).await.unwrap();
 
-    let result = wechat.list_articles(fakeid, 10, 1, None).await.unwrap();
+    let _ = fakeid; // TODO: 使用 fakeid 查询公众号文章列表
+    let result = wechat.list_articles().await.unwrap();
 
-    let mut text = format!("共 {} 篇文章:\n", result.total);
-    for (i, article) in result.articles.iter().enumerate() {
+    let mut text = format!("共 {} 篇文章:\n", result.len());
+    for (i, article) in result.iter().enumerate() {
         text.push_str(&format!(
-            "{}. {} ({})\n{}",
+            "{}. {} ({})\n{}\n",
             i + 1,
-            article.title,
-            article.update_time,
-            article.link
+            article.ext.title,
+            article.comm.datetime,
+            article.ext.content_url
         ));
     }
 
