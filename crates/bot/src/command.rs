@@ -21,6 +21,11 @@ pub enum Commands {
         /// 搜索关键词
         keyword: String,
     },
+    /// 列出公众号文章
+    List {
+        /// 公众号 ID
+        id: String,
+    },
     Query(Query),
 }
 
