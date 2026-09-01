@@ -1,5 +1,4 @@
 use lark::api::im::message::Message;
-use log::debug;
 
 use crate::context;
 
@@ -11,15 +10,14 @@ pub async fn search_official(chat_id: &str, key: &str) {
     lark.send_message(msg).await.unwrap();
 
     let result = wechat.search(key, 10, 1).await.unwrap();
-    debug!("Search result: {:?}", result);
 
     let mut text = format!("共 {} 个结果:\n", result.total);
     for (i, account) in result.list.iter().enumerate() {
         text.push_str(&format!(
-            "{}. {} (fakeid: {})\n{}",
+            "{}. {} (ID: {})\n{}\n",
             i + 1,
-            account.nickname,
-            account.fakeid,
+            account.name,
+            account.id,
             account.signature
         ));
     }

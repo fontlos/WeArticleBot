@@ -16,18 +16,21 @@ pub struct AccountList {
 /// 公众号信息
 #[derive(Debug, Deserialize)]
 pub struct AccountInfo {
-    /// 账号类型, 固定为 "account"
-    pub r#type: String,
-    /// 微信号
-    pub alias: String,
     /// 公众号 ID, 用于查询文章列表
-    pub fakeid: String,
-    /// 昵称
-    pub nickname: String,
+    #[serde(rename = "fakeid")]
+    pub id: String,
+    /// 公众号名称
+    #[serde(rename = "nickname")]
+    pub name: String,
+    /// 公众号账号
+    pub alias: String,
     /// 头像 URL
     #[serde(rename = "round_head_img")]
     pub head: String,
-    // pub service_type: i32,
+    /// 公众号类型, 0: 订阅号, 1: 订阅号, 2: 服务号
+    #[serde(rename = "service_type")]
+    pub r#type: i32,
+    /// 公众号签名简介
     pub signature: String,
 }
 
@@ -70,10 +73,9 @@ mod tests {
         let json = serde_json::json!({
             "base_resp": { "ret": 0, "err_msg": "ok" },
             "list": [{
-                "type": "account",
-                "alias": "test_alias",
                 "fakeid": "test_fakeid",
                 "nickname": "test_nickname",
+                "alias": "test_alias",
                 "round_head_img": "http://example.com/head.jpg",
                 "service_type": 0,
                 "signature": "test_signature",
