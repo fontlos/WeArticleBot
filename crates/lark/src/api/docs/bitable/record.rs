@@ -66,3 +66,48 @@ impl Session<Bitable> {
         Ok(res.records)
     }
 }
+
+/// 记录列表(查询结果)
+#[derive(Debug, Deserialize)]
+pub struct RecordList {
+    #[serde(default)]
+    pub items: Vec<Record>,
+    #[serde(default)]
+    pub has_more: bool,
+    #[serde(default)]
+    pub page_token: Option<String>,
+    #[serde(default)]
+    pub total: i32,
+}
+
+impl Session<Bitable> {
+    /// 查询记录
+    ///
+    /// filter: 形如 {"conjunction":"and","conditions":[{"field_name":"处理状态","operator":"is","value":["待总结"]}]}
+    /// sort:   形如 [{"field_name":"发布时间","desc":true}]
+    pub async fn list_records(
+        &self,
+        app_token: &str,
+        table_id: &str,
+        filter: Option<&Value>,
+        sort: Option<&Value>,
+        page_size: usize,
+    ) -> crate::Result<RecordList> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records",
+            app_token, table_id
+        );
+        let mut query: Vec<(String, String)> = vec![("page_size".into(), page_size.to_string())];
+        if let Some(f) = filter {
+            query.push(("filter".into(), f.to_string()));
+        }
+        if let Some(s) = sort {
+            query.push(("sort".into(), s.to_string()));
+        }
+        let req = self.client.get(&url).query(&query);
+        let bytes = self.request(req).await?;
+
+        let res: RecordList = Res::parse(&bytes)?;
+        Ok(res)
+    }
+}
