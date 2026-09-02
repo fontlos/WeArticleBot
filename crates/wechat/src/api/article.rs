@@ -72,12 +72,29 @@ pub struct ExtInfo {
     // pub malicious_content_type: i32,
 }
 
+/// 规范化公众号文章链接:
+/// 1. HTML 实体 &amp; -> &
+/// 2. http:// 升级为 https:// (微信文章页需 https 才能正常抓取)
+fn normalize_article_url(url: &str) -> String {
+    let url = url.replace("&amp;", "&");
+    if let Some(rest) = url.strip_prefix("http://") {
+        format!("https://{rest}")
+    } else {
+        url
+    }
+}
+
 impl Session {
     /// 获取公众号文章列表(演示: 读取根目录 test.json)
     pub async fn list_articles(&self) -> crate::Result<Vec<Article>> {
         let bytes = std::fs::read("./test.json").unwrap();
         let page: MsgPage = serde_json::from_slice(&bytes)?;
-        Ok(page.general_msg_list)
+        let mut articles = page.general_msg_list;
+        // 提取时预处理文章链接(&amp; 解码 + https 升级), 供后续 fetch_article 直接使用
+        for article in &mut articles {
+            article.ext.content_url = normalize_article_url(&article.ext.content_url);
+        }
+        Ok(articles)
     }
 
     /// 抓取文章页面原始 HTML

@@ -89,7 +89,8 @@ pub async fn sync_articles(chat_id: &str) {
 /// 有什么字段就填什么, 其余交给 Bitable 默认值; 正文暂不抓取(预留)
 fn article_record(account_record_id: &str, article: &wechat::Article) -> Value {
     let title = article.ext.title.clone();
-    let link = decode_amp(&article.ext.content_url);
+    // content_url 已在 wechat 侧规范化(实体解码 + https)
+    let link = article.ext.content_url.clone();
     json!({
         "标题": title,
         "公众号": [account_record_id],
@@ -101,11 +102,6 @@ fn article_record(account_record_id: &str, article: &wechat::Article) -> Value {
         "处理状态": "待总结",
         // 正文: 预留, 待 fetch_article 链路可用后填充
     })
-}
-
-/// content_url 里是 HTML 实体 &amp;, 链接使用前还原为 &
-fn decode_amp(s: &str) -> String {
-    s.replace("&amp;", "&")
 }
 
 async fn reply(chat_id: &str, text: &str) {
