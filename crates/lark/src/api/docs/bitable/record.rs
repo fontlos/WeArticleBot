@@ -110,4 +110,24 @@ impl Session<Bitable> {
         let res: RecordList = Res::parse(&bytes)?;
         Ok(res)
     }
+
+    /// 更新记录(部分字段)
+    pub async fn update_record(
+        &self,
+        app_token: &str,
+        table_id: &str,
+        record_id: &str,
+        fields: &Value,
+    ) -> crate::Result<Record> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/{}",
+            app_token, table_id, record_id
+        );
+        let body = json!({ "fields": fields });
+        let req = self.client.put(&url).json(&body);
+        let bytes = self.request(req).await?;
+
+        let res: RecordWrap = Res::parse(&bytes)?;
+        Ok(res.record)
+    }
 }
