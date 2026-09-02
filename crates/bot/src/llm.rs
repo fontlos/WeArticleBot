@@ -1,18 +1,24 @@
 //! LLM AI 总结会话
 //!
-//! 通过 OpenAI 兼容的 chat/completions 接口做文章总结
-//! 系统提示词暂留空, 后续再设计/配置
-//!
-//! 本模块暂未被业务调用, 统一允许 dead_code. 接入 AI 总结流程后应移除
-
-#![allow(dead_code)]
+//! 通过 OpenAI 兼容的 chat/completions 接口做文章总结。
+//! 使用 JSON Output 模式(response_format=json_object),
+//! 返回四层结构化结果: 一句话总结 / 核心要点 / 关键数据 / 结论与启示。
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-/// 系统提示词
-/// TODO: 待设计总结提示词
-const SYSTEM_PROMPT: &str = "";
+/// 系统提示词: 四层提取, 只输出 JSON
+const SYSTEM_PROMPT: &str = r#"你是一个专业的微信公众号文章总结助手。
+请阅读用户提供的文章内容，提取信息，严格按以下四层结构输出 JSON：
+
+1. one_line_summary: 一句话总结全文核心观点（不超过 60 字）
+2. key_points: 核心要点列表（3-5 条，每条不超过 80 字）
+3. key_data: 关键数据与事实（文章中的数字、时间、专有名词、结论性事实；没有就填空字符串）
+4. conclusion: 结论与启示（作者想传达的结论或行动建议；没有就填空字符串）
+
+只输出一个 JSON 对象，不要输出任何解释文字、markdown 代码块标记或其他内容。
+JSON 结构示例：
+{"one_line_summary":"一句话总结","key_points":["要点一","要点二"],"key_data":"关键数据","conclusion":"结论与启示"}"#;
 
 /// LLM 错误
 #[derive(Debug, thiserror::Error)]
@@ -29,10 +35,25 @@ pub enum Error {
     /// 响应中缺少可用内容
     #[error("LLM response has no content: {0}")]
     Empty(String),
+    /// 其它错误(如返回内容不是预期 JSON)
+    #[error("LLM error: {0}")]
+    Custom(String),
 }
 
 /// 结果别名
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// 四层结构化总结结果
+#[derive(Debug, Deserialize)]
+pub struct ArticleSummary {
+    pub one_line_summary: String,
+    #[serde(default)]
+    pub key_points: Vec<String>,
+    #[serde(default)]
+    pub key_data: String,
+    #[serde(default)]
+    pub conclusion: String,
+}
 
 /// LLM 会话, 持有 API 凭据与 HTTP 客户端
 #[derive(Debug)]
@@ -58,8 +79,8 @@ impl Session {
         }
     }
 
-    /// 文章 AI 总结: 调用 {base_url}/chat/completions, 返回模型生成的总结文本
-    pub async fn summarize(&self, text: &str) -> Result<String> {
+    /// 文章 AI 总结: 调用 {base_url}/chat/completions, 返回四层结构化总结
+    pub async fn summarize(&self, text: &str) -> Result<ArticleSummary> {
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let body = ChatRequest {
             model: &self.model,
@@ -73,6 +94,9 @@ impl Session {
                     content: text,
                 },
             ],
+            response_format: ResponseFormat {
+                r#type: "json_object",
+            },
         };
 
         let resp = self
@@ -90,11 +114,32 @@ impl Session {
         }
 
         let data: ChatResponse = resp.json().await?;
-        data.choices
+        let content = data
+            .choices
             .into_iter()
             .next()
             .map(|choice| choice.message.content)
-            .ok_or_else(|| Error::Empty("no choices in response".to_owned()))
+            .ok_or_else(|| Error::Empty("no choices in response".to_owned()))?;
+
+        parse_summary(&content)
+    }
+}
+
+/// 解析模型输出的 JSON(容忍 ```json 代码块包裹)
+fn parse_summary(content: &str) -> Result<ArticleSummary> {
+    let content = content.trim();
+    let content = content
+        .strip_prefix("```json")
+        .or_else(|| content.strip_prefix("```"))
+        .map(|s| s.trim().trim_end_matches("```").trim())
+        .unwrap_or(content);
+
+    match serde_json::from_str::<ArticleSummary>(content) {
+        Ok(summary) => Ok(summary),
+        Err(e) => Err(Error::Custom(format!(
+            "返回内容不是预期的 JSON: {e} ({})",
+            &content[..content.len().min(200)]
+        ))),
     }
 }
 
@@ -103,6 +148,8 @@ impl Session {
 struct ChatRequest<'a> {
     model: &'a str,
     messages: Vec<Message<'a>>,
+    /// JSON 输出模式
+    response_format: ResponseFormat,
 }
 
 /// 对话消息
@@ -110,6 +157,13 @@ struct ChatRequest<'a> {
 struct Message<'a> {
     role: &'a str,
     content: &'a str,
+}
+
+/// response_format: 固定 json_object
+#[derive(Debug, Serialize)]
+struct ResponseFormat {
+    #[serde(rename = "type")]
+    r#type: &'static str,
 }
 
 /// chat/completions 响应体
@@ -141,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn request_body_shape() {
+    fn request_body_has_json_mode_and_prompt() {
         let req = ChatRequest {
             model: "model-x",
             messages: vec![
@@ -154,13 +208,38 @@ mod tests {
                     content: "hello",
                 },
             ],
+            response_format: ResponseFormat {
+                r#type: "json_object",
+            },
         };
         let json = serde_json::to_value(&req).unwrap();
         assert_eq!(json["model"], "model-x");
-        assert_eq!(json["messages"][0]["role"], "system");
-        assert_eq!(json["messages"][0]["content"], "");
-        assert_eq!(json["messages"][1]["role"], "user");
+        assert_eq!(json["response_format"]["type"], "json_object");
+        assert!(
+            json["messages"][0]["content"]
+                .as_str()
+                .unwrap()
+                .contains("one_line_summary")
+        );
         assert_eq!(json["messages"][1]["content"], "hello");
+    }
+
+    #[test]
+    fn parse_structured_summary() {
+        let content = r#"{"one_line_summary":"一句话","key_points":["要点1","要点2"],"key_data":"数据","conclusion":"结论"}"#;
+        let s: ArticleSummary = serde_json::from_str(content).unwrap();
+        assert_eq!(s.one_line_summary, "一句话");
+        assert_eq!(s.key_points.len(), 2);
+        assert_eq!(s.key_data, "数据");
+        assert_eq!(s.conclusion, "结论");
+    }
+
+    #[test]
+    fn parse_summary_tolerates_code_fence() {
+        let content = "```json\n{\"one_line_summary\":\"a\",\"key_points\":[\"b\"]}\n```";
+        let s = parse_summary(content).unwrap();
+        assert_eq!(s.one_line_summary, "a");
+        assert_eq!(s.key_points, vec!["b".to_string()]);
     }
 
     #[test]
