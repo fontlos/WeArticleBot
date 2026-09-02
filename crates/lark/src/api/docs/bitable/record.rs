@@ -48,6 +48,9 @@ impl Session<Bitable> {
     }
 
     /// 批量新增记录 (单次最多 500 条)
+    ///
+    /// records: 每条为字段名 -> 值 的映射(与 create_record 的 fields 一致),
+    /// 内部会包一层 \"fields\" 后再提交
     pub async fn batch_create_records(
         &self,
         app_token: &str,
@@ -58,6 +61,10 @@ impl Session<Bitable> {
             "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/batch_create",
             app_token, table_id
         );
+        let records: Vec<Value> = records
+            .iter()
+            .map(|fields| json!({ "fields": fields }))
+            .collect();
         let body = json!({ "records": records });
         let req = self.client.post(&url).json(&body);
         let bytes = self.request(req).await?;
