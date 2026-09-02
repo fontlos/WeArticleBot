@@ -4,6 +4,7 @@ mod init;
 mod login;
 mod query;
 mod search;
+mod sync;
 mod table;
 
 use bytes::Bytes;
@@ -55,9 +56,8 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
                 search::search_official(chat_id, &keyword).await
             }
             command::Commands::Add { index } => table::add_account(chat_id, index as usize).await,
-            command::Commands::List { id } => {
-                search::list_articles(chat_id, &id).await
-            }
+            command::Commands::Sync => sync::sync_articles(chat_id).await,
+            command::Commands::List { id } => search::list_articles(chat_id, &id).await,
             command::Commands::Query(Query { command }) => match command {
                 QuerySub::UserId => query::query_user_id(&msg_event).await,
             },

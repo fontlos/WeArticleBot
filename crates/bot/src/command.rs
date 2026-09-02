@@ -25,6 +25,8 @@ pub enum Commands {
     Add {
         index: u8,
     },
+    /// 同步最近添加公众号的文章到表格
+    Sync,
     /// 列出公众号文章
     List {
         /// 公众号 ID
