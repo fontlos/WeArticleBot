@@ -21,7 +21,7 @@ pub async fn sync_articles(chat_id: &str) {
 
     reply(chat_id, "正在读取公众号列表...").await;
     let accounts = match bitable
-        .list_records(&state.app_token, &state.accounts_table_id, None, None, 100)
+        .list_records(&state.app_token, &state.accounts_table_id, 100)
         .await
     {
         Ok(list) => list.items,
@@ -86,7 +86,7 @@ pub async fn sync_articles(chat_id: &str) {
     }
 }
 
-/// 有什么字段就填什么, 其余交给 Bitable 默认值; 正文暂不抓取(预留)
+/// 有什么字段就填什么, 其余交给 Bitable 默认值; 正文由 summary 抓取后回填
 fn article_record(account_record_id: &str, article: &wechat::Article) -> Value {
     let title = article.ext.title.clone();
     // content_url 已在 wechat 侧规范化(实体解码 + https)
@@ -100,7 +100,7 @@ fn article_record(account_record_id: &str, article: &wechat::Article) -> Value {
         "发布时间": article.comm.datetime * 1000,
         "appmsgid": article.comm.id.to_string(),
         "处理状态": "待总结",
-        // 正文: 预留, 待 fetch_article 链路可用后填充
+        // 正文: summary 时按需抓取
     })
 }
 
