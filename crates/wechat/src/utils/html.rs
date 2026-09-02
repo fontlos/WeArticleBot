@@ -117,8 +117,6 @@ fn find_tag_end(hay: &[u8], lt: usize) -> Option<usize> {
     None
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

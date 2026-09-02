@@ -10,7 +10,7 @@ use crate::session::Session;
 
 #[derive(Debug, Deserialize)]
 struct MsgPage {
-    #[serde( deserialize_with = "deserialize_msg_list")]
+    #[serde(deserialize_with = "deserialize_msg_list")]
     general_msg_list: Vec<Article>,
 }
 

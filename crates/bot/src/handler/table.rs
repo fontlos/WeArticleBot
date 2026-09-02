@@ -35,7 +35,11 @@ pub async fn add_account(chat_id: &str, index: usize) {
         .await
     {
         Ok(record) => {
-            reply(chat_id, &format!("已添加: {} ({})", account.name, record.record_id)).await;
+            reply(
+                chat_id,
+                &format!("已添加: {} ({})", account.name, record.record_id),
+            )
+            .await;
         }
         Err(e) => reply(chat_id, &format!("添加失败: {e}")).await,
     }
