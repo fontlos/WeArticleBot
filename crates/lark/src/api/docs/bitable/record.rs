@@ -88,11 +88,32 @@ pub struct RecordList {
 }
 
 impl Session<Bitable> {
-    /// 查询记录
+    /// 列出记录(GET, 不支持条件筛选/排序; 如需筛选请用 search_records)
+    pub async fn list_records(
+        &self,
+        app_token: &str,
+        table_id: &str,
+        page_size: usize,
+    ) -> crate::Result<RecordList> {
+        let url = format!(
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records",
+            app_token, table_id
+        );
+        let req = self
+            .client
+            .get(&url)
+            .query(&[("page_size", page_size.to_string())]);
+        let bytes = self.request(req).await?;
+
+        let res: RecordList = Res::parse(&bytes)?;
+        Ok(res)
+    }
+
+    /// 搜索记录(POST /records/search, 支持条件筛选 + 排序)
     ///
     /// filter: 形如 {"conjunction":"and","conditions":[{"field_name":"处理状态","operator":"is","value":["待总结"]}]}
     /// sort:   形如 [{"field_name":"发布时间","desc":true}]
-    pub async fn list_records(
+    pub async fn search_records(
         &self,
         app_token: &str,
         table_id: &str,
@@ -101,17 +122,21 @@ impl Session<Bitable> {
         page_size: usize,
     ) -> crate::Result<RecordList> {
         let url = format!(
-            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records",
+            "https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/search",
             app_token, table_id
         );
-        let mut query: Vec<(String, String)> = vec![("page_size".into(), page_size.to_string())];
+        let mut body = serde_json::Map::new();
         if let Some(f) = filter {
-            query.push(("filter".into(), f.to_string()));
+            body.insert("filter".into(), f.clone());
         }
         if let Some(s) = sort {
-            query.push(("sort".into(), s.to_string()));
+            body.insert("sort".into(), s.clone());
         }
-        let req = self.client.get(&url).query(&query);
+        let req = self
+            .client
+            .post(&url)
+            .query(&[("page_size", page_size.to_string())])
+            .json(&body);
         let bytes = self.request(req).await?;
 
         let res: RecordList = Res::parse(&bytes)?;
