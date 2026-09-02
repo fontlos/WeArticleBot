@@ -21,6 +21,10 @@ pub enum Commands {
         /// 搜索关键词
         keyword: String,
     },
+    /// 添加订阅公众号
+    Add {
+        index: u8,
+    },
     /// 列出公众号文章
     List {
         /// 公众号 ID

@@ -3,6 +3,7 @@ mod context;
 mod handler;
 mod llm;
 mod logs;
+mod state;
 
 use tokio_util::sync::CancellationToken;
 

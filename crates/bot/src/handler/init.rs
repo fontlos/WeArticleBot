@@ -183,10 +183,19 @@ pub async fn init_bitable(event: &MessageEvent) {
         .create_table(app_token, &articles_table(&accounts.table_id))
         .await
         .unwrap();
-    let _summaries = bitable
+    let summaries = bitable
         .create_table(app_token, &summaries_table(&articles.table_id))
         .await
         .unwrap();
+
+    // 保存表格定位信息, 供 add 等命令复用
+    crate::state::BitableState {
+        app_token: new_bitable.app_token.clone(),
+        accounts_table_id: accounts.table_id,
+        articles_table_id: articles.table_id,
+        summaries_table_id: summaries.table_id,
+    }
+    .save();
 
     // 删除自带默认表
     bitable
