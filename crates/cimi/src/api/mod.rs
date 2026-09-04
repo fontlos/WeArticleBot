@@ -1,6 +1,7 @@
 mod account;
 mod article;
 mod auth;
+mod balance;
 
 pub use account::AccountInfo;
 
