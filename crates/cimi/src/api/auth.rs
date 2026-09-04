@@ -14,6 +14,8 @@ struct AccessToken {
 
 impl Session {
     /// 刷新 access token
+    ///
+    /// **Cost: 0**
     pub async fn refresh_token(&self) -> crate::Result<()> {
         let now = utils::timestamp()?;
         if now < self.expire() {

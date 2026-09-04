@@ -28,6 +28,8 @@ impl Session {
     /// # Arguments
     /// * `wxid` - 公众号唯一原始 ID
     /// * `nickname` - 公众号名称 (可选)
+    ///
+    /// **Cost: 0.04**
     pub async fn get_today_articles(
         &self,
         wxid: &str,
@@ -65,6 +67,8 @@ impl Session {
     /// # Arguments
     /// * `wxid` - 公众号唯一原始 ID
     /// * `last_id` - 下一页标识 (可选), 会在第一次请求时返回
+    ///
+    /// **Cost: 0.05**
     pub async fn get_history_articles(
         &self,
         wxid: &str,

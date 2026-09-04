@@ -30,6 +30,8 @@ impl Session {
     /// # Arguments
     /// * `biz` - 公众号 ID, fakeid, 形如 `MzA4MDA0MzcwMA==`
     /// * `nickname` - 公众号名称 (可选)
+    ///
+    /// **Cost: 0.04**
     pub async fn get_account_info(
         &self,
         biz: &str,
