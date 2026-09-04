@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 
-use crate::api::Res;
+use crate::api::data::Res;
 use crate::api::docs::drive::folder::{FileMeta, Folder};
 use crate::error::Error;
 use crate::session::Session;

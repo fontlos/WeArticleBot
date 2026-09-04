@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::session::Session;
 
-use crate::api::Res;
+use crate::api::data::Res;
 
 #[derive(Debug, Deserialize)]
 struct UploadImageResponse {

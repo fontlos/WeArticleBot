@@ -6,7 +6,7 @@ use serde_json::json;
 
 use crate::Session;
 
-use crate::api::Res;
+use crate::api::data::Res;
 
 use super::super::Bitable;
 

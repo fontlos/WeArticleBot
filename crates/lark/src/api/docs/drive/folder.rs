@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 
-use crate::api::Res;
+use crate::api::data::Res;
 use crate::session::Session;
 
 use super::super::Drive;

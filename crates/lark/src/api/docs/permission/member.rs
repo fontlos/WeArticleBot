@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::Session;
 
-use crate::api::Res;
+use crate::api::data::Res;
 
 use super::super::Permission;
 

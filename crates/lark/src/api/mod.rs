@@ -2,9 +2,8 @@ pub mod auth;
 pub mod docs;
 pub mod im;
 
-use serde::Deserialize;
+mod data;
 
-use crate::error::Error;
 use crate::session::{Core, Session};
 
 /// 授权 API 分组标记
@@ -28,39 +27,5 @@ impl Session<Core> {
     /// 切换消息 API 分组实例
     pub fn im(&self) -> &Session<Im> {
         self.api()
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Res {
-    pub code: i32,
-    pub msg: String,
-}
-
-impl Res {
-    /// 检查响应
-    pub fn check(bytes: &[u8]) -> crate::Result<()> {
-        let res: Res = serde_json::from_slice(bytes)?;
-        if res.code != 0 {
-            return Err(Error::Custom(format!(
-                "Bad response: code {}, message: {}",
-                res.code, res.msg
-            )));
-        }
-        Ok(())
-    }
-
-    /// 解析响应
-    pub fn parse<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> crate::Result<T> {
-        Self::check(bytes)?;
-        #[derive(Deserialize)]
-        struct Data<T> {
-            data: Option<T>,
-        }
-        let res: Data<T> = serde_json::from_slice(bytes)?;
-        match res.data {
-            Some(data) => Ok(data),
-            None => Err(Error::Custom("Bad response: no `data` field".into())),
-        }
     }
 }
