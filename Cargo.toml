@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/bot",
+    "crates/cimi",
     "crates/lark",
     "crates/wechat",
 ]
@@ -12,6 +13,7 @@ edition = "2024"
 authors = ["Fontlos <fontlos@fontlos.com>"]
 
 [workspace.dependencies]
+cimi = { path = "crates/cimi" }
 lark = { path = "crates/lark" }
 wechat = { path = "crates/wechat" }
 
