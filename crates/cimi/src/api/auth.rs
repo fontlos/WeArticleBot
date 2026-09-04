@@ -26,7 +26,6 @@ impl Session {
         });
         let res = self.client.post(url).json(&json).send().await?;
         let bytes = res.bytes().await?;
-        println!("refresh_token response: {}", String::from_utf8_lossy(&bytes));
         let res: AccessToken = Res::parse(&bytes)?;
 
         match res.token {
@@ -40,4 +39,3 @@ impl Session {
         Ok(())
     }
 }
-

@@ -1,5 +1,7 @@
-mod article;
+mod account;
 mod auth;
+
+pub use account::AccountInfo;
 
 use serde::Deserialize;
 

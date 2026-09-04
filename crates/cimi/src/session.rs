@@ -1,8 +1,8 @@
 use arc_swap::ArcSwap;
 use reqwest::Client;
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Debug)]
 pub struct Session {

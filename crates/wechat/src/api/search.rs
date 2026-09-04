@@ -16,7 +16,8 @@ pub struct AccountList {
 /// 公众号信息
 #[derive(Debug, Deserialize)]
 pub struct AccountInfo {
-    /// 公众号 ID, 用于查询文章列表
+    /// 公众号 ID, 用于本 crate API 查询文章列表
+    /// fakeid, 也是 biz, 形如 `MzA4MDA0MzcwMA==`
     #[serde(rename = "fakeid")]
     pub id: String,
     /// 公众号名称
