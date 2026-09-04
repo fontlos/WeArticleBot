@@ -31,10 +31,7 @@ pub async fn add_account(chat_id: &str, index: usize) {
 
     // 调 cimi 获取公众号信息, 拿到 wxid(历史文章接口入参)
     let cimi = context::cimi();
-    let wxid = match cimi
-        .get_account_info(&account.id, Some(&account.name))
-        .await
-    {
+    let wxid = match cimi.get_account_info(&account.id).await {
         Ok(info) => info.wxid,
         Err(e) => {
             reply(chat_id, &format!("获取公众号信息失败(0.04 积分): {e}")).await;

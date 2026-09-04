@@ -23,6 +23,7 @@ pub struct ArticlePage {
 }
 
 impl Session {
+    // 疑似可用 biz 直接查询
     /// 获取公众号当天发文
     ///
     /// # Arguments
@@ -74,7 +75,7 @@ impl Session {
         wxid: &str,
         last_id: Option<&str>,
     ) -> crate::Result<ArticlePage> {
-        let url = "https://api.cimidata.com/api/v2/articles/current";
+        let url = "https://api.cimidata.com/api/v2/articles/history";
         self.refresh_token().await?;
         let token = self.token();
 
