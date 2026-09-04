@@ -29,7 +29,17 @@ pub async fn add_account(chat_id: &str, index: usize) {
         return;
     };
 
-    let fields = account_fields(&account);
+    // 调 cimi 获取公众号信息, 拿到 wxid(历史文章接口入参)
+    let cimi = context::cimi();
+    let wxid = match cimi.get_account_info(&account.id, Some(&account.name)).await {
+        Ok(info) => info.wxid,
+        Err(e) => {
+            reply(chat_id, &format!("获取公众号信息失败(0.04 积分): {e}")).await;
+            return;
+        }
+    };
+
+    let fields = account_fields(&account, &wxid);
     match bitable
         .create_record(&state.app_token, &state.accounts_table_id, &fields)
         .await
@@ -46,10 +56,11 @@ pub async fn add_account(chat_id: &str, index: usize) {
 }
 
 /// 有什么字段就填什么, 其余交给 Bitable 默认值
-fn account_fields(account: &AccountData) -> serde_json::Value {
+fn account_fields(account: &AccountData, wxid: &str) -> serde_json::Value {
     json!({
         "公众号名称": account.name,
         "fakeid": account.id,
+        "wxid": wxid,
         "头像": { "text": account.name, "link": account.head },
         "简介": account.signature,
         "抓取状态": "启用",

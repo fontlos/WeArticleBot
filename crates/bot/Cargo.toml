@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+cimi = { workspace = true }
 lark = { workspace = true }
 wechat = { workspace = true }
 

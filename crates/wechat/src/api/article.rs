@@ -85,9 +85,9 @@ fn normalize_article_url(url: &str) -> String {
 }
 
 impl Session {
-    /// 获取公众号文章列表(演示: 读取根目录 test.json)
+    /// 获取公众号文章列表, 已损坏(演示: 读取根目录 test.json)
     pub async fn list_articles(&self) -> crate::Result<Vec<Article>> {
-        let bytes = std::fs::read("./test.json").unwrap();
+        let bytes = std::fs::read("./test/test.json").unwrap();
         let page: MsgPage = serde_json::from_slice(&bytes)?;
         let mut articles = page.general_msg_list;
         // 提取时预处理文章链接(&amp; 解码 + https 升级), 供后续 fetch_article 直接使用

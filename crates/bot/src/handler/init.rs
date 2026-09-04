@@ -16,6 +16,7 @@ fn accounts_table() -> Value {
             "fields": [
                 { "field_name": "公众号名称", "type": 1 },
                 { "field_name": "fakeid", "type": 1 },
+                { "field_name": "wxid", "type": 1 },
                 { "field_name": "头像", "type": 15 },
                 { "field_name": "简介", "type": 1 },
                 {
@@ -90,7 +91,7 @@ fn articles_table(accounts_table_id: &str) -> Value {
                     "type": 5,
                     "property": { "date_formatter": "yyyy-MM-dd HH:mm" }
                 },
-                { "field_name": "appmsgid", "type": 1 },
+                { "field_name": "chksm", "type": 1 },
                 { "field_name": "正文", "type": 1 },
                 {
                     "field_name": "处理状态",

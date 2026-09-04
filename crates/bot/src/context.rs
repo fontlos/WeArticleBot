@@ -3,9 +3,10 @@
 use std::env;
 use std::sync::OnceLock;
 
-// 全局上下文, 包含飞书, 微信和 LLM 的会话
+// 全局上下文, 包含飞书, 微信, 次幂数据和 LLM 的会话
 static LARK: OnceLock<lark::Session> = OnceLock::new();
 static WECHAT: OnceLock<wechat::Session> = OnceLock::new();
+static CIMI: OnceLock<cimi::Session> = OnceLock::new();
 static LLM: OnceLock<crate::llm::Session> = OnceLock::new();
 
 /// 初始化全局上下文, 并尝试恢复上次的会话状态
@@ -24,6 +25,12 @@ pub fn init() {
     // let wechat_token = env::var("WECHAT_TOKEN").unwrap();
     // wechat.set_token(&wechat_token);
     assert!(WECHAT.set(wechat).is_ok(), "wechat already initialized");
+
+    // 初始化次幂数据会话
+    let cimi_app_id = env::var("CIMIDATA_APP_ID").expect("CIMIDATA_APP_ID not set");
+    let cimi_app_secret = env::var("CIMIDATA_APP_SECRET").expect("CIMIDATA_APP_SECRET not set");
+    let cimi = cimi::Session::new(&cimi_app_id, &cimi_app_secret);
+    assert!(CIMI.set(cimi).is_ok(), "cimi already initialized");
 
     // 初始化 LLM 会话
     let llm_base_url = env::var("LLM_BASE_URL").expect("LLM_BASE_URL not set");
@@ -46,9 +53,13 @@ pub fn wechat() -> &'static wechat::Session {
         .expect("context not initialized, call context::init first")
 }
 
+/// 获取次幂数据会话
+pub fn cimi() -> &'static cimi::Session {
+    CIMI.get()
+        .expect("context not initialized, call context::init first")
+}
+
 /// 获取 LLM 会话
-// TODO: 接入 AI 总结流程后移除 allow
-#[allow(dead_code)]
 pub fn llm() -> &'static crate::llm::Session {
     LLM.get()
         .expect("context not initialized, call context::init first")
