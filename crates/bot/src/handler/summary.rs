@@ -7,17 +7,28 @@ use serde_json::{Value, json};
 use crate::context;
 use crate::state::BitableState;
 
+/// summarize 一次执行的结果, 供定时任务判断是否继续处理下一篇
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SummarizeOutcome {
+    /// 成功总结一篇(含写入 AI总结表并标记已总结)
+    Done,
+    /// 没有待总结的文章
+    NoPending,
+    /// 未初始化 / 查询失败 / 内容为空 / 总结失败, 本轮不应继续
+    Failed,
+}
+
 /// summary: 取文章表中「待总结」且发布时间最早的一篇,
 /// 正文缺失时先抓取并回填, 再调 LLM 做四层总结,
 /// 写入 AI总结表, 并把文章标记为已总结
-pub async fn summarize_latest(chat_id: &str) {
+pub async fn summarize_latest(chat_id: &str) -> SummarizeOutcome {
     let lark = context::lark();
     let wechat = context::wechat();
     let bitable = lark.docs().bitable();
 
     let Some(state) = BitableState::load() else {
         reply(chat_id, "尚未初始化多维表格, 请先执行 init").await;
-        return;
+        return SummarizeOutcome::Failed;
     };
 
     // 筛选: 处理状态 = 待总结; 排序: 发布时间正序(取最远/最早的一篇); 只取 1 条
@@ -42,13 +53,13 @@ pub async fn summarize_latest(chat_id: &str) {
         Ok(list) => list,
         Err(e) => {
             reply(chat_id, &format!("查询文章失败: {e}")).await;
-            return;
+            return SummarizeOutcome::Failed;
         }
     };
 
     let Some(article) = list.items.into_iter().next() else {
         reply(chat_id, "没有待总结的文章").await;
-        return;
+        return SummarizeOutcome::NoPending;
     };
     let article_id = article.record_id;
     let field = |name: &str| {
@@ -82,7 +93,7 @@ pub async fn summarize_latest(chat_id: &str) {
     };
     if input.trim().is_empty() {
         reply(chat_id, "文章内容为空(正文抓取失败且无标题摘要), 无法总结").await;
-        return;
+        return SummarizeOutcome::Failed;
     }
 
     reply(chat_id, "正在总结...").await;
@@ -103,7 +114,7 @@ pub async fn summarize_latest(chat_id: &str) {
                 .await
             {
                 reply(chat_id, &format!("写入总结失败: {e}")).await;
-                return;
+                return SummarizeOutcome::Failed;
             }
             // 标记文章已总结
             let _ = bitable
@@ -115,8 +126,12 @@ pub async fn summarize_latest(chat_id: &str) {
                 )
                 .await;
             reply(chat_id, "总结完成").await;
+            SummarizeOutcome::Done
         }
-        Err(e) => reply(chat_id, &format!("总结失败: {e}")).await,
+        Err(e) => {
+            reply(chat_id, &format!("总结失败: {e}")).await;
+            SummarizeOutcome::Failed
+        }
     }
 }
 

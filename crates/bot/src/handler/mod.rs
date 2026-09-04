@@ -4,8 +4,8 @@ mod init;
 mod login;
 mod query;
 mod search;
-mod summary;
-mod sync;
+pub mod summary;
+pub mod sync;
 
 use bytes::Bytes;
 use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
@@ -56,7 +56,9 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
             }
             command::Commands::Add { index } => add::add_account(chat_id, index as usize).await,
             command::Commands::Sync => sync::sync_articles(chat_id).await,
-            command::Commands::Summary => summary::summarize_latest(chat_id).await,
+            command::Commands::Summary => {
+                summary::summarize_latest(chat_id).await;
+            }
             command::Commands::Query(Query { command }) => match command {
                 QuerySub::Lark => query::query_lark_profile(&msg_event).await,
                 QuerySub::Wechat => query::query_wechat_profile(chat_id).await,
