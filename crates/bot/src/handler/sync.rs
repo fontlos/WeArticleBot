@@ -196,8 +196,14 @@ mod tests {
 
     #[test]
     fn parse_published_at_formats() {
-        assert_eq!(parse_published_at("2024-05-16T14:03:54Z"), Some(1715868234000));
-        assert_eq!(parse_published_at("2024-05-16 14:03:54"), Some(1715868234000));
+        assert_eq!(
+            parse_published_at("2024-05-16T14:03:54Z"),
+            Some(1715868234000)
+        );
+        assert_eq!(
+            parse_published_at("2024-05-16 14:03:54"),
+            Some(1715868234000)
+        );
         assert_eq!(parse_published_at("garbage"), None);
     }
 }

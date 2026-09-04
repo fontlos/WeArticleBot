@@ -1,3 +1,4 @@
+mod add;
 mod help;
 mod info;
 mod init;
@@ -6,7 +7,6 @@ mod query;
 mod search;
 mod summary;
 mod sync;
-mod table;
 
 use bytes::Bytes;
 use lark::event::{EventDispatcher, EventEnvelope, MessageEvent};
@@ -56,7 +56,7 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
             command::Commands::Search { keyword } => {
                 search::search_official(chat_id, &keyword).await
             }
-            command::Commands::Add { index } => table::add_account(chat_id, index as usize).await,
+            command::Commands::Add { index } => add::add_account(chat_id, index as usize).await,
             command::Commands::Sync => sync::sync_articles(chat_id).await,
             command::Commands::Summary => summary::summarize_latest(chat_id).await,
             command::Commands::List { id } => search::list_articles(chat_id, &id).await,
