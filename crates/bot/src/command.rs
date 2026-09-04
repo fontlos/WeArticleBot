@@ -12,8 +12,6 @@ pub struct Cli {
 pub enum Commands {
     /// 获取微信登录二维码
     Login,
-    /// 获取用户信息
-    Info,
     /// 初始化多维表格与权限
     Init,
     /// 搜索公众号
@@ -22,18 +20,12 @@ pub enum Commands {
         keyword: String,
     },
     /// 添加订阅公众号
-    Add {
-        index: u8,
-    },
-    /// 同步最近添加公众号的文章到表格
+    Add { index: u8 },
+    /// 同步公众号的文章到表格
     Sync,
-    /// 总结最近一篇待总结文章(测试)
+    /// 总结待总结文章
     Summary,
-    /// 列出公众号文章
-    List {
-        /// 公众号 ID
-        id: String,
-    },
+    /// 查询各组件状态
     Query(Query),
 }
 
@@ -45,7 +37,10 @@ pub struct Query {
 
 #[derive(Debug, Subcommand)]
 pub enum QuerySub {
-    UserId,
+    /// 查询飞书用户信息
+    Lark,
+    /// 查询微信用户信息
+    Wechat,
 }
 
 pub fn parse_cli(text: &str) -> Result<Cli, clap::Error> {

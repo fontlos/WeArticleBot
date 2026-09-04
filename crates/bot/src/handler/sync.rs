@@ -56,7 +56,8 @@ pub async fn sync_articles(chat_id: &str) {
             continue;
         }
 
-        // cimi 历史文章(第一页); TODO: last_id 循环翻页
+        // cimi 历史文章(第一页)
+        // TODO: last_id 循环翻页
         let page = match cimi.get_history_articles(wxid, None).await {
             Ok(page) => page,
             Err(e) => {
@@ -64,6 +65,18 @@ pub async fn sync_articles(chat_id: &str) {
                 continue;
             }
         };
+
+        let mut text = format!("公众号 '{}' 已获取 {} 篇文章:\n", name, page.items.len());
+        for (i, article) in page.items.iter().enumerate() {
+            text.push_str(&format!(
+                "{}. {} ({})\n{}\n",
+                i + 1,
+                article.title,
+                article.published_at,
+                article.url
+            ));
+        }
+        reply(chat_id, &text).await;
 
         let records: Vec<Value> = page
             .items

@@ -1,6 +1,5 @@
 mod add;
 mod help;
-mod info;
 mod init;
 mod login;
 mod query;
@@ -51,7 +50,6 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
     match command::parse_cli(&text) {
         Ok(cli) => match cli.command {
             command::Commands::Login => login::scan_login(chat_id).await,
-            command::Commands::Info => info::fetch_profile(chat_id).await,
             command::Commands::Init => init::init_bitable(&msg_event).await,
             command::Commands::Search { keyword } => {
                 search::search_official(chat_id, &keyword).await
@@ -59,13 +57,12 @@ async fn handle_message_event(envelope: EventEnvelope) -> lark::error::Result<()
             command::Commands::Add { index } => add::add_account(chat_id, index as usize).await,
             command::Commands::Sync => sync::sync_articles(chat_id).await,
             command::Commands::Summary => summary::summarize_latest(chat_id).await,
-            command::Commands::List { id } => search::list_articles(chat_id, &id).await,
             command::Commands::Query(Query { command }) => match command {
-                QuerySub::UserId => query::query_user_id(&msg_event).await,
+                QuerySub::Lark => query::query_lark_profile(&msg_event).await,
+                QuerySub::Wechat => query::query_wechat_profile(chat_id).await,
             },
         },
         Err(err) => {
-            // warn!("Unknown command: {}", name);
             help::reply(chat_id, &err.to_string()).await;
         }
     }
