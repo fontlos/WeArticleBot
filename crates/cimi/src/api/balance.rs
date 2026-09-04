@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::session::Session;
 
-use super::Res;
+use super::data::Res;
 
 #[derive(Debug, Deserialize)]
 struct Balance {

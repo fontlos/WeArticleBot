@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::session::Session;
 use crate::utils;
 
-use super::Res;
+use super::data::Res;
 
 #[derive(Debug, Deserialize)]
 struct AccessToken {

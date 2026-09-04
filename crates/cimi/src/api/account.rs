@@ -1,10 +1,8 @@
-//! 获取公众号当天发文接口（原始 bytes 版本）
-
 use serde::Deserialize;
 
 use crate::session::Session;
 
-use super::Res;
+use super::data::Res;
 
 #[derive(Debug, Deserialize)]
 pub struct AccountInfo {
