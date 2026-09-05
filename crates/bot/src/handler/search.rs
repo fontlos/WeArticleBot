@@ -34,10 +34,11 @@ pub async fn search_official(chat_id: &str, key: &str) {
 
     let result = wechat.search(key, 10, 1).await.unwrap();
 
-    let mut text = format!("共 {} 个结果:\n", result.total);
+    let title = format!("共 {} 个结果:\n", result.total);
+    let mut text = String::with_capacity(1024);
     for (i, account) in result.list.iter().enumerate() {
         text.push_str(&format!(
-            "{}. {} (ID: {})\n{}\n",
+            "{}. {} (ID: {})\n    - {}\n",
             i + 1,
             account.name,
             account.id,
@@ -45,9 +46,23 @@ pub async fn search_official(chat_id: &str, key: &str) {
         ));
     }
 
+    let md = serde_json::json!({
+        "zh_cn": {
+            "title": title,
+            "content": [
+                [
+                    {
+                        "tag": "md",
+                        "text": text,
+                    }
+                ]
+            ],
+        }
+    });
+
     // 暂存本次结果, 供 add <index> 使用
     *LAST_RESULTS.lock().unwrap() = Some(result.list);
 
-    let msg = Message::to_chat(chat_id).text(&text);
+    let msg = Message::to_chat(chat_id).post(md.to_string());
     lark.send_message(msg).await.unwrap();
 }

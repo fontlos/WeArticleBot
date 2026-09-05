@@ -66,17 +66,33 @@ pub async fn sync_articles(chat_id: &str) {
             }
         };
 
-        let mut text = format!("公众号 '{}' 已获取 {} 篇文章:\n", name, page.items.len());
+        let title = format!("公众号 '{}' 已获取 {} 篇文章:\n", name, page.items.len());
+        let mut text = String::with_capacity(1024);
         for (i, article) in page.items.iter().enumerate() {
             text.push_str(&format!(
-                "{}. {} ({})\n{}\n",
+                "{}. {} ({})\n    - {}\n",
                 i + 1,
                 article.title,
                 article.published_at,
                 article.url
             ));
         }
-        reply(chat_id, &text).await;
+
+        let md = serde_json::json!({
+            "zh_cn": {
+                "title": title,
+                "content": [
+                    [
+                        {
+                            "tag": "md",
+                            "text": text,
+                        }
+                    ]
+                ],
+            }
+        });
+        let msg = Message::to_chat(chat_id).post(md.to_string());
+        lark.send_message(msg).await.unwrap();
 
         let records: Vec<Value> = page
             .items
